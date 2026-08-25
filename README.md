@@ -170,8 +170,3 @@ This project follows phase-wise development — each phase is completed, committ
 TBD
 
 ---
-
-## 👤 Author
-
-**Sathtik Bose**
-📧 sathtikbose@gmail.com
