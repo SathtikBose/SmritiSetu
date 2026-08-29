@@ -1,0 +1,41 @@
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# Java / Maven build output
+**/target/
+**/build/
+*.class
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+application-local.properties
+application-dev.properties
+application-test-local.properties
+**/src/main/resources/application.properties
+
+# Logs and operating system files
+*.log
+logs/
+hs_err_pid*
+.DS_Store
+Thumbs.db
+
+# Spring Tool Suite / Eclipse
+.classpath
+.project
+.settings/
+.factorypath
+.apt_generated/
+.springBeans
+.sts4-cache/
+
+
+
+##Folders 
+SmritiSetu-System-Design.md
