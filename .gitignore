@@ -31,7 +31,13 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
+.env.*
+!.env.example
 .env*.local
+
+# Local Spring Boot configuration (contains machine-specific database credentials)
+**/src/main/resources/application.properties
 
 # typescript
 *.tsbuildinfo
@@ -42,5 +48,6 @@ example
 /ios
 /android
 .vscode
+.idea/
 
 

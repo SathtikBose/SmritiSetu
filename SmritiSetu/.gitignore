@@ -4,3 +4,14 @@
 
 expo-env.d.ts
 # @end expo-cli
+
+# React Native generated native projects
+ios/
+android/
+
+# Local editor files and environment secrets
+.idea/
+.vscode/
+.env
+.env.*
+!.env.example
