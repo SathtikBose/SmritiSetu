@@ -1,6 +1,8 @@
 import { View, Text, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 
 export default function GamesScreen() {
+  const router = useRouter();
   const games = [
     { title: 'Memory Match', category: 'Memory', color: 'bg-indigo-500' },
     { title: 'Pattern Recall', category: 'Visual', color: 'bg-purple-500' },
@@ -19,6 +21,11 @@ export default function GamesScreen() {
             <TouchableOpacity 
               key={index} 
               className="w-[48%] bg-white/5 border border-white/10 rounded-3xl p-5 mb-4 shadow-lg active:scale-95 transition-transform"
+              onPress={() => {
+                if (game.title === 'Memory Match') {
+                  router.push('/games/memory' as any);
+                }
+              }}
             >
               <View className={`${game.color} w-12 h-12 rounded-2xl mb-4 opacity-80`} />
               <Text className="text-white font-bold text-lg mb-1">{game.title}</Text>
