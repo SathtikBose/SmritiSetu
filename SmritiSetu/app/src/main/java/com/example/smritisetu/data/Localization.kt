@@ -60,14 +60,12 @@ data class AppStrings(
     // Settings Screen
     val settingsTitle: String,
     val editProfile: String,
+    val themePreferencesCategory: String,
     val appearance: String,
     val language: String,
     val selectLanguage: String,
     val fontSize: String,
     val fontSizeSubtitle: String,
-    val googleAccount: String,
-    val connected: String,
-    val notConnected: String,
     val appVersion: String,
     val themePreference: String,
     val themeSystem: String,
@@ -75,15 +73,34 @@ data class AppStrings(
     val themeDark: String,
     val themeHighContrast: String,
 
+    // Change Password
+    val changePassword: String,
+    val currentPassword: String,
+    val newPassword: String,
+    val changePasswordButton: String,
+    val passwordChangedSuccess: String,
+    val passwordErrorEmpty: String,
+    val passwordErrorShort: String,
+
+    // Edit Profile
+    val choosePhotoSource: String,
+    val camera: String,
+    val gallery: String,
+    val gender: String,
+    val genderMale: String,
+    val genderFemale: String,
+    val genderOther: String,
+    val age: String,
+    val phoneNumber: String,
+    val profileUpdated: String,
+
     // Auth
     val login: String,
     val signup: String,
     val forgotPassword: String,
     val email: String,
     val password: String,
-    val fullName: String,
-    val roleCaregiver: String,
-    val rolePatient: String
+    val fullName: String
 )
 
 val EnglishStrings = AppStrings(
@@ -91,7 +108,7 @@ val EnglishStrings = AppStrings(
     appNameEnglish = "SmritiSetu",
     tagline = "AI Cognitive Gaming & Memory Assistance for Elders",
     play = "Play",
-    save = "Save",
+    save = "Save Profile",
     cancel = "Cancel",
     back = "Back",
     done = "Done",
@@ -128,31 +145,46 @@ val EnglishStrings = AppStrings(
     leagueSubtitle = "Encouraging gentle community progress across North East Region",
     leagueDivision = "Silver Division • NER Community",
 
-    settingsTitle = "Settings & Accessibility",
+    settingsTitle = "Settings & Preferences",
     editProfile = "Edit Profile",
-    appearance = "App Appearance",
+    themePreferencesCategory = "Theme Preference",
+    appearance = "App Theme",
     language = "Language",
     selectLanguage = "Select Language",
     fontSize = "Reading Font Size",
     fontSizeSubtitle = "Slide to adjust font size across the entire app for easy reading.",
-    googleAccount = "Google Account",
-    connected = "Connected",
-    notConnected = "Not connected",
     appVersion = "App Version",
-    themePreference = "Theme Preference",
+    themePreference = "App Theme",
     themeSystem = "System Default",
     themeLight = "Light Glass Theme",
     themeDark = "Dark Glass Theme",
     themeHighContrast = "High Contrast Mode",
+
+    changePassword = "Change Password",
+    currentPassword = "Current Password",
+    newPassword = "New Password",
+    changePasswordButton = "Update Password",
+    passwordChangedSuccess = "Password updated successfully!",
+    passwordErrorEmpty = "Please enter both current and new password.",
+    passwordErrorShort = "New password must be at least 6 characters.",
+
+    choosePhotoSource = "Choose Profile Photo",
+    camera = "Take Photo (Camera)",
+    gallery = "Choose from Gallery",
+    gender = "Gender",
+    genderMale = "Male",
+    genderFemale = "Female",
+    genderOther = "Other",
+    age = "Age (Years)",
+    phoneNumber = "Phone Number",
+    profileUpdated = "Profile updated successfully!",
 
     login = "Login",
     signup = "Sign Up",
     forgotPassword = "Forgot Password?",
     email = "Email Address",
     password = "Password",
-    fullName = "Full Name",
-    roleCaregiver = "Caregiver",
-    rolePatient = "Patient"
+    fullName = "Full Name"
 )
 
 val AssameseStrings = AppStrings(
@@ -197,31 +229,46 @@ val AssameseStrings = AppStrings(
     leagueSubtitle = "উত্তৰ-পূব অঞ্চলৰ সমাজৰ মাজত সহমৰ্মিতা আৰু উন্নতি",
     leagueDivision = "ৰূপালী বিভাগ • উত্তৰ-পূব সম্প্ৰদায়",
 
-    settingsTitle = "ছেটিংছ আৰু সুগমতা",
-    editProfile = "প্ৰফাইল সম্পাদন কৰক",
-    appearance = "এপৰ ৰূপ",
+    settingsTitle = "ছেটিংছ আৰু পছন্দ",
+    editProfile = "প্ৰফাইল সম্পাদন",
+    themePreferencesCategory = "থীম আৰু পছন্দ",
+    appearance = "এপৰ থীম",
     language = "ভাষা",
     selectLanguage = "ভাষা বাছক",
     fontSize = "পঢ়াৰ আখৰৰ আকাৰ",
     fontSizeSubtitle = "সহজে পঢ়িবলৈ সমগ্ৰ এপটোৰ আখৰৰ আকাৰ সলনি কৰক।",
-    googleAccount = "গুগল একাউণ্ট",
-    connected = "সংযুক্ত",
-    notConnected = "সংযুক্ত নহয়",
     appVersion = "এপ সংস্কৰণ",
-    themePreference = "ৰূপৰ পছন্দ (থীম)",
+    themePreference = "এপৰ থীম",
     themeSystem = "ছিষ্টেম ডিফল্ট",
     themeLight = "পোহৰ গ্লাছ থীম",
     themeDark = "আন্ধাৰ গ্লাছ থীম",
     themeHighContrast = "উচ্চ বৈসাদৃশ্য (High Contrast)",
+
+    changePassword = "পাছৱৰ্ড সলনি কৰক",
+    currentPassword = "বৰ্তমানৰ পাছৱৰ্ড",
+    newPassword = "নতুন পাছৱৰ্ড",
+    changePasswordButton = "পাছৱৰ্ড সলনি কৰক",
+    passwordChangedSuccess = "পাছৱৰ্ড সফলতাৰে সলনি কৰা হ'ল!",
+    passwordErrorEmpty = "বৰ্তমান আৰু নতুন দুয়োটা পাছৱৰ্ড দিয়ক।",
+    passwordErrorShort = "নতুন পাছৱৰ্ড কমেও ৬টা আখৰৰ হ'ব লাগিব।",
+
+    choosePhotoSource = "প্ৰফাইল ফটো বাছক",
+    camera = "কেমেৰা (ফটো তোলক)",
+    gallery = "গেলেৰীৰ পৰা বাছক",
+    gender = "লিংগ",
+    genderMale = "পুৰুষ",
+    genderFemale = "মহিলা",
+    genderOther = "অন্যান্য",
+    age = "বয়স (বছৰ)",
+    phoneNumber = "ফোন নম্বৰ",
+    profileUpdated = "প্ৰফাইল সফলতাৰে সংৰক্ষণ কৰা হ'ল!",
 
     login = "লগ ইন",
     signup = "ছাইন আপ",
     forgotPassword = "পাছৱৰ্ড পাহৰিলে নেকি?",
     email = "ইমেইল ঠিকনা",
     password = "পাছৱৰ্ড",
-    fullName = "সম্পূৰ্ণ নাম",
-    roleCaregiver = "শুশ্ৰূষাকাৰী",
-    rolePatient = "ৰোগী / জ্যেষ্ঠ"
+    fullName = "সম্পূৰ্ণ নাম"
 )
 
 val HindiStrings = AppStrings(
@@ -229,7 +276,7 @@ val HindiStrings = AppStrings(
     appNameEnglish = "SmritiSetu",
     tagline = "वरिष्ठ नागरिकों के लिए एआई संज्ञानात्मक खेल और स्मृति सहायता",
     play = "खेलें",
-    save = "सहेजें",
+    save = "प्रोफ़ाइल सहेजें",
     cancel = "रद्द करें",
     back = "वापस",
     done = "पूर्ण",
@@ -266,16 +313,14 @@ val HindiStrings = AppStrings(
     leagueSubtitle = "पूर्वोत्तर क्षेत्र में समुदाय के बीच सौम्य प्रगति को प्रोत्साहन",
     leagueDivision = "रजत प्रभाग • पूर्वोत्तर समुदाय",
 
-    settingsTitle = "सेटिंग्स और सुगमता",
+    settingsTitle = "सेटिंग्स और प्राथमिकताएं",
     editProfile = "प्रोफ़ाइल संपादित करें",
-    appearance = "ऐप स्वरूप (थीम)",
+    themePreferencesCategory = "थीम और प्राथमिकताएं",
+    appearance = "ऐप थीम",
     language = "भाषा",
     selectLanguage = "भाषा चुनें",
     fontSize = "पढ़ने के फ़ॉन्ट का आकार",
     fontSizeSubtitle = "आसानी से पढ़ने के लिए पूरे ऐप में फ़ॉन्ट का आकार समायोजित करें।",
-    googleAccount = "गूगल खाता",
-    connected = "जुड़ा हुआ",
-    notConnected = "नहीं जुड़ा है",
     appVersion = "ऐप संस्करण",
     themePreference = "थीम प्राथमिकता",
     themeSystem = "सिस्टम डिफ़ॉल्ट",
@@ -283,14 +328,31 @@ val HindiStrings = AppStrings(
     themeDark = "डार्क ग्लास थीम",
     themeHighContrast = "उच्च कंट्रास्ट मोड",
 
+    changePassword = "पासवर्ड बदलें",
+    currentPassword = "वर्तमान पासवर्ड",
+    newPassword = "नया पासवर्ड",
+    changePasswordButton = "पासवर्ड अपडेट करें",
+    passwordChangedSuccess = "पासवर्ड सफलतापूर्वक बदल दिया गया!",
+    passwordErrorEmpty = "कृपया वर्तमान और नया दोनों पासवर्ड दर्ज करें।",
+    passwordErrorShort = "नया पासवर्ड कम से कम ६ अक्षरों का होना चाहिए।",
+
+    choosePhotoSource = "प्रोफ़ाइल फ़ोटो चुनें",
+    camera = "फ़ोटो खींचें (कैमरा)",
+    gallery = "गैलरी से चुनें",
+    gender = "लिंग",
+    genderMale = "पुरुष",
+    genderFemale = "महिला",
+    genderOther = "अन्य",
+    age = "आयु (वर्ष)",
+    phoneNumber = "फ़ोन नंबर",
+    profileUpdated = "प्रोफ़ाइल सफलतापूर्वक अपडेट हो गई!",
+
     login = "लॉग इन",
     signup = "साइन अप",
     forgotPassword = "पासवर्ड भूल गए?",
     email = "ईमेल पता",
     password = "पासवर्ड",
-    fullName = "पूरा नाम",
-    roleCaregiver = "देखभालकर्ता",
-    rolePatient = "मरीज / बुजुर्ग"
+    fullName = "पूरा नाम"
 )
 
 val BengaliStrings = AppStrings(
@@ -298,7 +360,7 @@ val BengaliStrings = AppStrings(
     appNameEnglish = "SmritiSetu",
     tagline = "প্রবীণদের জন্য এআই জ্ঞানমূলক খেলা ও স্মৃতি সহায়িকা",
     play = "খেলুন",
-    save = "সংরক্ষণ করুন",
+    save = "প্রোফাইল সংরক্ষণ",
     cancel = "বাতিল",
     back = "পিছনে",
     done = "সম্পন্ন",
@@ -335,16 +397,14 @@ val BengaliStrings = AppStrings(
     leagueSubtitle = "উত্তর-পূর্ব ভারতের সম্প্রদায়ের মাঝে বন্ধুত্বপূর্ণ উন্নতি",
     leagueDivision = "সিলভার ডিভিশন • উত্তর-পূর্ব",
 
-    settingsTitle = "সেটিংস ও অ্যাক্সেসিবিলিটি",
+    settingsTitle = "সেটিংস ও পছন্দসমূহ",
     editProfile = "প্রোফাইল সম্পাদনা",
-    appearance = "অ্যাপের রূপ (থিম)",
+    themePreferencesCategory = "থিম ও পছন্দসমূহ",
+    appearance = "অ্যাপ থিম",
     language = "ভাষা",
     selectLanguage = "ভাষা নির্বাচন করুন",
     fontSize = "পড়ার ফন্ট সাইজ",
     fontSizeSubtitle = "সহজে পড়ার জন্য পুরো অ্যাপের লেখার আকার পরিবর্তন করুন।",
-    googleAccount = "গুগল অ্যাকাউন্ট",
-    connected = "সংযুক্ত",
-    notConnected = "সংযুক্ত নয়",
     appVersion = "অ্যাপ সংস্করণ",
     themePreference = "থিম পছন্দ",
     themeSystem = "সিস্টেম ডিফল্ট",
@@ -352,14 +412,31 @@ val BengaliStrings = AppStrings(
     themeDark = "ডার্ক গ্লাস থিম",
     themeHighContrast = "হাই কন্ট্রাস্ট মোড",
 
+    changePassword = "পাসওয়ার্ড পরিবর্তন",
+    currentPassword = "বর্তমান পাসওয়ার্ড",
+    newPassword = "নতুন পাসওয়ার্ড",
+    changePasswordButton = "পাসওয়ার্ড আপডেট করুন",
+    passwordChangedSuccess = "পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!",
+    passwordErrorEmpty = "বর্তমান এবং নতুন পাসওয়ার্ড উভয়ই প্রবেশ করুন।",
+    passwordErrorShort = "নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।",
+
+    choosePhotoSource = "প্রোফাইল ছবি নির্বাচন",
+    camera = "ছবি তুলুন (ক্যামেরা)",
+    gallery = "গ্যালারি থেকে নির্বাচন",
+    gender = "লিঙ্গ",
+    genderMale = "পুরুষ",
+    genderFemale = "মহিলা",
+    genderOther = "অন্যান্য",
+    age = "বয়স (বছর)",
+    phoneNumber = "ফোন নম্বর",
+    profileUpdated = "প্রোফাইল সফলভাবে আপডেট করা হয়েছে!",
+
     login = "লগ ইন",
     signup = "সাইন আপ",
     forgotPassword = "পাসওয়ার্ড ভুলে গেছেন?",
     email = "ইমেল ঠিকানা",
     password = "পাসওয়ার্ড",
-    fullName = "পুরো নাম",
-    roleCaregiver = "সেবাকারী",
-    rolePatient = "রোগী / প্রবীণ"
+    fullName = "পুরো নাম"
 )
 
 val BodoStrings = AppStrings(
@@ -406,14 +483,12 @@ val BodoStrings = AppStrings(
 
     settingsTitle = "सेटिंफोर",
     editProfile = "बाय'दाथा सोलाय",
+    themePreferencesCategory = "थीम सायख'",
     appearance = "नुथाय (थीम)",
     language = "राव",
     selectLanguage = "राव सायख'",
     fontSize = "फरायनाय हांखोनि महर",
     fontSizeSubtitle = "गोरलैयै फरायनो गासै एपाव हांखोनि महरखौ सोलाय।",
-    googleAccount = "गुगल एकाउन्ट",
-    connected = "फोनांजाबबाय",
-    notConnected = "फोनांजाबाखै",
     appVersion = "एप भर्सन",
     themePreference = "थीम सायख'",
     themeSystem = "सिस्टेम",
@@ -421,14 +496,31 @@ val BodoStrings = AppStrings(
     themeDark = "खोमोम ग्लास थीम",
     themeHighContrast = "हाय कन्ट्रास्ट",
 
+    changePassword = "पासवर्ड सोलाय",
+    currentPassword = "दानि पासवर्ड",
+    newPassword = "गोदान पासवर्ड",
+    changePasswordButton = "पासवर्ड गोदान खालाम",
+    passwordChangedSuccess = "पासवर्ड सोलायबाय!",
+    passwordErrorEmpty = "दानि आरो गोदान पासवर्ड होनांगौ।",
+    passwordErrorShort = "गोदान पासवर्ड ६ हांखोनि बांसिन जानंगौ।",
+
+    choosePhotoSource = "फट' सायख'",
+    camera = "केमेरा (फट' ला)",
+    gallery = "गेलारिफ्राय सायख'",
+    gender = "लिंग",
+    genderMale = "हौवा",
+    genderFemale = "हिनजाव",
+    genderOther = "गुबुन",
+    age = "बैसो (बोथोर)",
+    phoneNumber = "फन नम्बर",
+    profileUpdated = "बाय'दाथा सोलायबाय!",
+
     login = "लग इन",
     signup = "साइन आप",
     forgotPassword = "पासवर्ड बावबाय नामा?",
     email = "इमेल थं",
     password = "पासवर्ड",
-    fullName = "आबुं मुं",
-    roleCaregiver = "फाहामगिरि",
-    rolePatient = "रोगियारी / बैसो गोरा"
+    fullName = "आबुं मुं"
 )
 
 fun getStringsForLanguage(language: AppLanguage): AppStrings {
@@ -441,4 +533,4 @@ fun getStringsForLanguage(language: AppLanguage): AppStrings {
     }
 }
 
-val LocalAppStrings = compositionLocalOf { AssameseStrings }
+val LocalAppStrings = compositionLocalOf { EnglishStrings }

@@ -22,8 +22,10 @@ data class UserProfile(
     val name: String = "Dr. Ananya Sharma",
     val email: String = "ananya.sharma@example.com",
     val phone: String = "+91 98765 43210",
-    val role: UserRole = UserRole.CAREGIVER,
-    val preferredLanguage: String = "Assamese",
+    val gender: String = "Female",
+    val age: Int = 68,
+    val avatarUri: String? = null,
+    val preferredLanguage: String = "English",
     val isGoogleLinked: Boolean = false,
     val totalXp: Int = 1450,
     val streakDays: Int = 12,
@@ -44,15 +46,14 @@ object AuthManager {
     private val _fontScale = MutableStateFlow(1.0f)
     val fontScale: StateFlow<Float> = _fontScale.asStateFlow()
 
-    // In-App Multilingual Selection
-    private val _selectedLanguage = MutableStateFlow(AppLanguage.ASSAMESE)
+    // In-App Multilingual Selection - Default is English
+    private val _selectedLanguage = MutableStateFlow(AppLanguage.ENGLISH)
     val selectedLanguage: StateFlow<AppLanguage> = _selectedLanguage.asStateFlow()
 
     fun login(email: String, pass: String): Result<UserProfile> {
         val user = UserProfile(
             name = if (email.contains("@")) email.substringBefore("@").replaceFirstChar { it.uppercase() } else "User",
             email = email,
-            role = UserRole.CAREGIVER,
             preferredLanguage = _selectedLanguage.value.displayName
         )
         _currentUser.value = user
@@ -60,11 +61,10 @@ object AuthManager {
         return Result.success(user)
     }
 
-    fun signup(name: String, email: String, pass: String, role: UserRole): Result<UserProfile> {
+    fun signup(name: String, email: String, pass: String, role: UserRole = UserRole.CAREGIVER): Result<UserProfile> {
         val user = UserProfile(
             name = name.ifBlank { "User" },
             email = email,
-            role = role,
             preferredLanguage = _selectedLanguage.value.displayName
         )
         _currentUser.value = user
@@ -77,7 +77,6 @@ object AuthManager {
             name = "Google User",
             email = "user.google@gmail.com",
             isGoogleLinked = true,
-            role = UserRole.PATIENT,
             preferredLanguage = _selectedLanguage.value.displayName
         )
         _currentUser.value = user
@@ -106,17 +105,24 @@ object AuthManager {
         return Result.failure(IllegalArgumentException("Invalid OTP code"))
     }
 
-    fun updateProfile(name: String, phone: String, language: String, role: UserRole) {
-        val matchingLang = AppLanguage.entries.find { it.displayName.equals(language, ignoreCase = true) || it.nativeName.equals(language, ignoreCase = true) }
-        if (matchingLang != null) {
-            _selectedLanguage.value = matchingLang
+    fun changePassword(currentPass: String, newPass: String): Result<Boolean> {
+        if (currentPass.isBlank() || newPass.isBlank()) {
+            return Result.failure(IllegalArgumentException("Please fill in both password fields"))
         }
+        if (newPass.length < 6) {
+            return Result.failure(IllegalArgumentException("New password must be at least 6 characters"))
+        }
+        return Result.success(true)
+    }
+
+    fun updateProfile(name: String, phone: String, gender: String, age: Int, avatarUri: String?) {
         _currentUser.update { current ->
             current?.copy(
                 name = name,
                 phone = phone,
-                preferredLanguage = language,
-                role = role
+                gender = gender,
+                age = age,
+                avatarUri = avatarUri
             )
         }
     }

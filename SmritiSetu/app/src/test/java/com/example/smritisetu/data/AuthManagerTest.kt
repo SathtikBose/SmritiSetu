@@ -13,6 +13,11 @@ class AuthManagerTest {
     }
 
     @Test
+    fun defaultLanguage_isEnglish() {
+        assertEquals(AppLanguage.ENGLISH, AuthManager.selectedLanguage.value)
+    }
+
+    @Test
     fun login_success_setsUserAndLoggedIn() {
         val result = AuthManager.login("test@smritisetu.org", "password123")
         assertTrue(result.isSuccess)
@@ -21,12 +26,17 @@ class AuthManagerTest {
     }
 
     @Test
-    fun signup_success_createsAccountWithRole() {
-        val result = AuthManager.signup("Biren Gogoi", "biren@smritisetu.org", "password123", UserRole.PATIENT)
+    fun signup_success_createsAccount() {
+        val result = AuthManager.signup("Biren Gogoi", "biren@smritisetu.org", "password123")
         assertTrue(result.isSuccess)
         assertTrue(AuthManager.isLoggedIn.value)
         assertEquals("Biren Gogoi", AuthManager.currentUser.value?.name)
-        assertEquals(UserRole.PATIENT, AuthManager.currentUser.value?.role)
+    }
+
+    @Test
+    fun changePassword_validPassword_success() {
+        val result = AuthManager.changePassword("oldPassword123", "newPassword456")
+        assertTrue(result.isSuccess)
     }
 
     @Test
@@ -61,20 +71,22 @@ class AuthManagerTest {
         assertEquals("स्मृति सेतु", hindiStrings.appNameNative)
         assertEquals("होम", hindiStrings.navHome)
 
-        AuthManager.setLanguage(AppLanguage.ASSAMESE)
-        assertEquals(AppLanguage.ASSAMESE, AuthManager.selectedLanguage.value)
-        val asStrings = getStringsForLanguage(AppLanguage.ASSAMESE)
-        assertEquals("স্মৃতি সেতু", asStrings.appNameNative)
-        assertEquals("গৃহ", asStrings.navHome)
+        AuthManager.setLanguage(AppLanguage.ENGLISH)
+        assertEquals(AppLanguage.ENGLISH, AuthManager.selectedLanguage.value)
+        val enStrings = getStringsForLanguage(AppLanguage.ENGLISH)
+        assertEquals("SmritiSetu", enStrings.appNameNative)
+        assertEquals("Home", enStrings.navHome)
     }
 
     @Test
     fun updateProfile_updatesFields() {
         AuthManager.login("ananya@smritisetu.org", "pass")
-        AuthManager.updateProfile("Dr. Ananya S.", "+91 99999 88888", "Assamese", UserRole.CAREGIVER)
+        AuthManager.updateProfile("Dr. Ananya S.", "+91 99999 88888", "Female", 65, "camera://avatar1")
         val user = AuthManager.currentUser.value
         assertEquals("Dr. Ananya S.", user?.name)
         assertEquals("+91 99999 88888", user?.phone)
-        assertEquals("Assamese", user?.preferredLanguage)
+        assertEquals("Female", user?.gender)
+        assertEquals(65, user?.age)
+        assertEquals("camera://avatar1", user?.avatarUri)
     }
 }
