@@ -1,5 +1,6 @@
 package com.example.smritisetu.data
 
+import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,8 +29,20 @@ data class UserProfile(
     val preferredLanguage: String = "English",
     val isGoogleLinked: Boolean = false,
     val totalXp: Int = 1450,
+    val coins: Int = 1000,
     val streakDays: Int = 12,
     val leagueTier: String = "Silver Division"
+)
+
+data class CognitiveGameLog(
+    val gameName: String,
+    val level: Int,
+    val tries: Int,
+    val totalCards: Int,
+    val timeElapsedMs: Long,
+    val hintsUsed: Int,
+    val difficulty: String = "NORMAL",
+    val timestamp: Long = System.currentTimeMillis()
 )
 
 object AuthManager {
@@ -49,6 +62,10 @@ object AuthManager {
     // In-App Multilingual Selection - Default is English
     private val _selectedLanguage = MutableStateFlow(AppLanguage.ENGLISH)
     val selectedLanguage: StateFlow<AppLanguage> = _selectedLanguage.asStateFlow()
+
+    // Cognitive Telemetry Logs
+    private val _telemetryLogs = MutableStateFlow<List<CognitiveGameLog>>(emptyList())
+    val telemetryLogs: StateFlow<List<CognitiveGameLog>> = _telemetryLogs.asStateFlow()
 
     fun login(email: String, pass: String): Result<UserProfile> {
         val user = UserProfile(
@@ -124,6 +141,28 @@ object AuthManager {
                 age = age,
                 avatarUri = avatarUri
             )
+        }
+    }
+
+    fun addRewards(xp: Int, coins: Int) {
+        _currentUser.update { current ->
+            current?.copy(
+                totalXp = (current.totalXp + xp),
+                coins = (current.coins + coins)
+            )
+        }
+    }
+
+    fun recordGameTelemetry(log: CognitiveGameLog) {
+        _telemetryLogs.update { it + log }
+        try {
+            Log.i(
+                "SmritiSetuAnalytics",
+                "CognitiveGameLog: game=${log.gameName}, level=${log.level}, tries=${log.tries}, totalCards=${log.totalCards}, timeMs=${log.timeElapsedMs}, hints=${log.hintsUsed}, diff=${log.difficulty}"
+            )
+        } catch (_: Exception) {
+            // Unit test environment fallback
+            println("[SmritiSetuAnalytics] CognitiveGameLog: $log")
         }
     }
 

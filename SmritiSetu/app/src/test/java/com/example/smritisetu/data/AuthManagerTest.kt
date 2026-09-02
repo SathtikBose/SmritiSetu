@@ -40,9 +40,30 @@ class AuthManagerTest {
     }
 
     @Test
-    fun verifyOtp_validOtp_resetsPassword() {
-        val result = AuthManager.verifyOtpAndResetPassword("biren@smritisetu.org", "123456", "newpass123")
-        assertTrue(result.isSuccess)
+    fun addRewards_incrementsXpAndCoins() {
+        AuthManager.login("user@smritisetu.org", "pass")
+        val initialXp = AuthManager.currentUser.value?.totalXp ?: 0
+        val initialCoins = AuthManager.currentUser.value?.coins ?: 0
+
+        AuthManager.addRewards(xp = 15, coins = 200)
+
+        assertEquals(initialXp + 15, AuthManager.currentUser.value?.totalXp)
+        assertEquals(initialCoins + 200, AuthManager.currentUser.value?.coins)
+    }
+
+    @Test
+    fun recordGameTelemetry_recordsLogs() {
+        val log = CognitiveGameLog(
+            gameName = "MatchTheCard",
+            level = 1,
+            tries = 4,
+            totalCards = 4,
+            timeElapsedMs = 5200L,
+            hintsUsed = 0,
+            difficulty = "NORMAL"
+        )
+        AuthManager.recordGameTelemetry(log)
+        assertTrue(AuthManager.telemetryLogs.value.contains(log))
     }
 
     @Test

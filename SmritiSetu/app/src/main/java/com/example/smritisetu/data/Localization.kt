@@ -52,6 +52,18 @@ data class AppStrings(
     val game5Desc: String,
     val game5Tag: String,
 
+    // Game 1: Match The Card
+    val matchTheCard: String,
+    val findPairs: String,
+    val level: String,
+    val levelComplete: String,
+    val nextLevel: String,
+    val tries: String,
+    val timeTaken: String,
+    val coinsReward: String,
+    val xpReward: String,
+    val hintActive: String,
+
     // League Screen
     val leagueTitle: String,
     val leagueSubtitle: String,
@@ -125,7 +137,7 @@ val EnglishStrings = AppStrings(
 
     gamesTitle = "Cognitive Games",
     gamesSubtitle = "5 adaptive, non-stressful exercises for memory stimulation",
-    game1Title = "1. Cultural Memory Match",
+    game1Title = "1. Match The Card",
     game1Desc = "Gently match familiar pairs of North Eastern cultural symbols and instruments.",
     game1Tag = "Assam Heritage",
     game2Title = "2. Tea Garden Sound Recall",
@@ -140,6 +152,17 @@ val EnglishStrings = AppStrings(
     game5Title = "5. Calming Pattern Puzzle",
     game5Desc = "Connect peaceful floral and geometric patterns with no time limits.",
     game5Tag = "Relaxation",
+
+    matchTheCard = "Match The Card",
+    findPairs = "Find matching cultural pairs at your own calm pace",
+    level = "Level",
+    levelComplete = "Level Complete!",
+    nextLevel = "Next Level",
+    tries = "Tries",
+    timeTaken = "Time",
+    coinsReward = "+200 Coins",
+    xpReward = "+15 XP",
+    hintActive = "Hint: Matching cards highlighted!",
 
     leagueTitle = "Cognitive League",
     leagueSubtitle = "Encouraging gentle community progress across North East Region",
@@ -209,7 +232,7 @@ val AssameseStrings = AppStrings(
 
     gamesTitle = "জ্ঞানমূলক খেলসমূহ",
     gamesSubtitle = "স্মৃতি উদ্দীপনাৰ বাবে ৫টা শান্ত আৰু সহজ কাৰ্যকলাপ",
-    game1Title = "১. সাংস্কৃতিক স্মৃতি মিলোৱা",
+    game1Title = "১. কাৰ্ড মিলাওক (Match The Card)",
     game1Desc = "উত্তৰ-পূবৰ পৰিচিত সাংস্কৃতিক প্ৰতীক আৰু বাদ্যযন্ত্ৰৰ জোৰা মিলাওক।",
     game1Tag = "অসমীয়া ঐতিহ্য",
     game2Title = "২. চাহ বাগিচাৰ ধ্বনি স্মৃতি",
@@ -224,6 +247,17 @@ val AssameseStrings = AppStrings(
     game5Title = "৫. শান্ত আৰ্হিৰ সাঁথৰ",
     game5Desc = "সময়ৰ সীমা নোহোৱাকৈ ফুল আৰু জ্যামিতিক আৰ্হি শান্তভাৱে সংযোগ কৰক।",
     game5Tag = "মানসিক শান্তি",
+
+    matchTheCard = "কাৰ্ড মিলাওক",
+    findPairs = "আপোনাৰ সুবিধা অনুসৰি শান্তভাৱে সাংস্কৃতিক জোৰাসমূহ মিলাওক",
+    level = "স্তৰ",
+    levelComplete = "স্তৰ সম্পন্ন হ'ল!",
+    nextLevel = "পৰৱৰ্তী স্তৰ",
+    tries = "প্ৰচেষ্টা",
+    timeTaken = "সময়",
+    coinsReward = "+২০০ মুদ্ৰা",
+    xpReward = "+১৫ XP",
+    hintActive = "ইংগিত: একে কাৰ্ডবোৰ উজ্জ্বল কৰা হৈছে!",
 
     leagueTitle = "জ্ঞানমূলক লিগ",
     leagueSubtitle = "উত্তৰ-পূব অঞ্চলৰ সমাজৰ মাজত সহমৰ্মিতা আৰু উন্নতি",
@@ -293,7 +327,7 @@ val HindiStrings = AppStrings(
 
     gamesTitle = "संज्ञानात्मक खेल",
     gamesSubtitle = "स्मृति सक्रियता के लिए ५ तनावमुक्त और शांत अभ्यास",
-    game1Title = "१. सांस्कृतिक स्मृति मिलान",
+    game1Title = "१. कार्ड मिलान (Match The Card)",
     game1Desc = "पूर्वोत्तर के सांस्कृतिक प्रतीकों और वाद्य यंत्रों के जोड़े मिलाएं।",
     game1Tag = "असम एवं पूर्वोत्तर धरोहर",
     game2Title = "२. चाय बागान ध्वनि स्मरण",
@@ -308,6 +342,17 @@ val HindiStrings = AppStrings(
     game5Title = "५. शांत पैटर्न पहेली",
     game5Desc = "बिना किसी समय सीमा के फूलों और ज्यामितीय पैटर्न को जोड़ें।",
     game5Tag = "मानसिक विश्राम",
+
+    matchTheCard = "कार्ड मिलान",
+    findPairs = "सांस्कृतिक प्रतीकों के जोड़े शांत गति से खोजें",
+    level = "स्तर",
+    levelComplete = "स्तर पूर्ण हुआ!",
+    nextLevel = "अगला स्तर",
+    tries = "प्रयास",
+    timeTaken = "समय",
+    coinsReward = "+२०० सिक्के",
+    xpReward = "+१५ XP",
+    hintActive = "संकेत: समान कार्ड चमक रहे हैं!",
 
     leagueTitle = "संज्ञानात्मक लीग",
     leagueSubtitle = "पूर्वोत्तर क्षेत्र में समुदाय के बीच सौम्य प्रगति को प्रोत्साहन",
@@ -377,7 +422,7 @@ val BengaliStrings = AppStrings(
 
     gamesTitle = "জ্ঞানমূলক খেলাধূলা",
     gamesSubtitle = "স্মৃতি উদ্দীপনার জন্য ৫টি শান্ত ও সহজ খেলা",
-    game1Title = "১. সাংস্কৃতিক স্মৃতি মেলানো",
+    game1Title = "১. কার্ড মেলানো (Match The Card)",
     game1Desc = "উত্তর-পূর্বের পরিচিত সাংস্কৃতিক প্রতীক ও বাদ্যযন্ত্রের জোড়া মেলান।",
     game1Tag = "ঐতিহ্য",
     game2Title = "২. চা বাগানের ধ্বনি স্মৃতি",
@@ -392,6 +437,17 @@ val BengaliStrings = AppStrings(
     game5Title = "৫. শান্ত প্যাটার্ন ধাঁধা",
     game5Desc = "সময়সীমা ছাড়াই সুন্দর ফুলের ও জ্যামিতিক নকশা সংযুক্ত করুন।",
     game5Tag = "প্রশান্তি",
+
+    matchTheCard = "কার্ড মেলানো",
+    findPairs = "শান্ত গতিতে সাংস্কৃতিক জোড়াগুলি মেলান",
+    level = "স্তর",
+    levelComplete = "স্তর সম্পন্ন হয়েছে!",
+    nextLevel = "পরবর্তী স্তর",
+    tries = "চেষ্টা",
+    timeTaken = "সময়",
+    coinsReward = "+২০০ কয়েন",
+    xpReward = "+১৫ XP",
+    hintActive = "ইঙ্গিত: একই কার্ডগুলো আলোকিত হয়েছে!",
 
     leagueTitle = "কগনিটিভ লিগ",
     leagueSubtitle = "উত্তর-পূর্ব ভারতের সম্প্রদায়ের মাঝে বন্ধুত্বপূর্ণ উন্নতি",
@@ -461,7 +517,7 @@ val BodoStrings = AppStrings(
 
     gamesTitle = "गोसोनि गेलेमुफोर",
     gamesSubtitle = "गोसोखांथि बांहोनो ५ टा गोजोन गेलेमु",
-    game1Title = "१. हारिमु गोसोखांथि",
+    game1Title = "१. कार्द गोरोबहो (Match The Card)",
     game1Desc = "सान्जा-सानि हारिमुआरि सिनफोरखौ गोरोबहो।",
     game1Tag = "हारिमु",
     game2Title = "२. सा-बागाननि रिंखांथि",
@@ -476,6 +532,17 @@ val BodoStrings = AppStrings(
     game5Title = "५. गोजोन नुमुना फाजोल",
     game5Desc = "अख'रा गैयै बिबार आरो नुमुनाफोरखौ दाजाब।",
     game5Tag = "गोजोन",
+
+    matchTheCard = "कार्द गोरोबहो",
+    findPairs = "गोजोनै हारिमुआरि जोराफोरखौ गोरोबहो",
+    level = "लेभेल",
+    levelComplete = "लेभेल जाबाय!",
+    nextLevel = "उननि लेभेल",
+    tries = "नाजानाय",
+    timeTaken = "सम",
+    coinsReward = "+२०० खइन",
+    xpReward = "+१५ XP",
+    hintActive = "दिनथिनाय: गोरोबनाय कार्दफोरा जोंबाय!",
 
     leagueTitle = "गोसोनि लिग",
     leagueSubtitle = "सान्जा-सा ओनसोलनि समाज जौगाथाय",

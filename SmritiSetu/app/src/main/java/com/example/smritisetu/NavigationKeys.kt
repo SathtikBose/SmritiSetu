@@ -20,3 +20,6 @@ data object EditProfileRoute : NavKey
 
 @Serializable
 data object AppAppearanceRoute : NavKey
+
+@Serializable
+data object MatchCardGameRoute : NavKey

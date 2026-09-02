@@ -9,6 +9,7 @@ import androidx.navigation3.ui.NavDisplay
 import com.example.smritisetu.ui.auth.ForgotPasswordScreen
 import com.example.smritisetu.ui.auth.LoginScreen
 import com.example.smritisetu.ui.auth.SignupScreen
+import com.example.smritisetu.ui.games.MatchCardGameScreen
 import com.example.smritisetu.ui.main.MainContainerScreen
 import com.example.smritisetu.ui.settings.AppAppearanceScreen
 import com.example.smritisetu.ui.settings.EditProfileScreen
@@ -54,6 +55,7 @@ fun MainNavigation() {
                     MainContainerScreen(
                         onNavigateToEditProfile = { backStack.add(EditProfileRoute) },
                         onNavigateToAppearance = { backStack.add(AppAppearanceRoute) },
+                        onNavigateToMatchCardGame = { backStack.add(MatchCardGameRoute) },
                         onLogout = {
                             backStack.clear()
                             backStack.add(LoginRoute)
@@ -67,6 +69,11 @@ fun MainNavigation() {
                 }
                 entry<AppAppearanceRoute> {
                     AppAppearanceScreen(
+                        onNavigateBack = { backStack.removeLastOrNull() }
+                    )
+                }
+                entry<MatchCardGameRoute> {
+                    MatchCardGameScreen(
                         onNavigateBack = { backStack.removeLastOrNull() }
                     )
                 }
