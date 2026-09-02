@@ -1,25 +1,25 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 
-export default function OTPScreen() {
+export default function ChangePasswordScreen() {
   const router = useRouter();
 
   return (
     <View className="flex-1 items-center justify-center bg-slate-900">
-      <Text className="text-3xl font-bold text-white mb-8">Enter OTP</Text>
+      <Text className="text-3xl font-bold text-white mb-8">Change Password</Text>
       
       <TouchableOpacity 
         className="bg-indigo-500 px-8 py-4 rounded-xl w-64 mb-4 items-center"
-        onPress={() => router.push('/reset-password' as any)}
+        onPress={() => router.back()}
       >
-        <Text className="text-white font-semibold">Verify OTP</Text>
+        <Text className="text-white font-semibold">Update Password</Text>
       </TouchableOpacity>
       
       <TouchableOpacity 
         className="px-8 py-4 w-64 items-center"
         onPress={() => router.back()}
       >
-        <Text className="text-indigo-400 font-semibold">Back</Text>
+        <Text className="text-indigo-400 font-semibold">Cancel</Text>
       </TouchableOpacity>
     </View>
   );

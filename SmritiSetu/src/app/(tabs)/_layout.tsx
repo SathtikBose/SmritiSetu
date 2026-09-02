@@ -29,9 +29,9 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="rank"
+        name="leagues"
         options={{
-          title: "Rank",
+          title: "Leagues",
           tabBarIcon: ({ color, size }) => <Trophy color={color} size={size} />,
         }}
       />
