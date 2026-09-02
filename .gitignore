@@ -1,46 +1,34 @@
 
 
-# dependencies
-node_modules/
+# OS & IDE
+.DS_Store
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
 
-# Expo
-.expo/
-dist/
-web-build/
-expo-env.d.ts
+# Gradle & Build Artifacts
+.gradle/
+build/
+bin/
+out/
+/captures/
+.externalNativeBuild/
+.cxx/
+local.properties
 
-# Native
-.kotlin/
-*.orig.*
+# Secrets & Keystores
 *.jks
 *.p8
 *.p12
 *.key
+*.pem
 *.mobileprovision
 
-# Metro
-.metro-health-check*
+# Logs & temp
+*.log
+*.tmp
 
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
-.DS_Store
-*.pem
-
-# local env files
-.env*.local
-
-# typescript
-*.tsbuildinfo
-
-example
-
-# generated native folders
-/ios
-/android
-.vscode
 
 
