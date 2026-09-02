@@ -2,7 +2,6 @@ package com.example.smritisetu.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,8 +19,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smritisetu.data.AppThemeMode
 import com.example.smritisetu.data.AuthManager
+import com.example.smritisetu.data.LocalAppStrings
 import com.example.smritisetu.theme.GlassCard
 import com.example.smritisetu.theme.getGlassGradientBrush
+import com.example.smritisetu.theme.isAppInDarkTheme
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,17 +33,18 @@ fun AppAppearanceScreen(
 ) {
     val themeMode by AuthManager.themeMode.collectAsState()
     val fontScale by AuthManager.fontScale.collectAsState()
-    val darkTheme = isSystemInDarkTheme()
+    val darkTheme = isAppInDarkTheme(themeMode)
+    val strings = LocalAppStrings.current
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("App Appearance & Text") },
+                title = { Text(strings.appearance) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = strings.back
                         )
                     }
                 }
@@ -65,7 +67,7 @@ fun AppAppearanceScreen(
             ) {
                 // Theme Mode Section
                 Text(
-                    text = "Theme Preference",
+                    text = strings.themePreference,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onBackground
                 )
@@ -77,7 +79,7 @@ fun AppAppearanceScreen(
                 ) {
                     Column(modifier = Modifier.padding(vertical = 4.dp)) {
                         CleanThemeOptionRow(
-                            title = "System Default",
+                            title = strings.themeSystem,
                             description = "Follows your device system settings",
                             icon = Icons.Default.BrightnessAuto,
                             isSelected = themeMode == AppThemeMode.SYSTEM,
@@ -88,7 +90,7 @@ fun AppAppearanceScreen(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                         )
                         CleanThemeOptionRow(
-                            title = "Light Glass Theme",
+                            title = strings.themeLight,
                             description = "Clean, translucent frost with gentle tones",
                             icon = Icons.Default.LightMode,
                             isSelected = themeMode == AppThemeMode.LIGHT,
@@ -99,7 +101,7 @@ fun AppAppearanceScreen(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                         )
                         CleanThemeOptionRow(
-                            title = "Dark Glass Theme",
+                            title = strings.themeDark,
                             description = "Calm, eye-soothing dark frosted surface",
                             icon = Icons.Default.DarkMode,
                             isSelected = themeMode == AppThemeMode.DARK,
@@ -110,7 +112,7 @@ fun AppAppearanceScreen(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                         )
                         CleanThemeOptionRow(
-                            title = "High Contrast Mode",
+                            title = strings.themeHighContrast,
                             description = "High legibility contrast for low-vision elderly users",
                             icon = Icons.Default.Contrast,
                             isSelected = themeMode == AppThemeMode.HIGH_CONTRAST,
@@ -121,7 +123,7 @@ fun AppAppearanceScreen(
 
                 // Font Size Section
                 Text(
-                    text = "Elderly Text Scaling",
+                    text = strings.fontSize,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onBackground
                 )
@@ -142,7 +144,7 @@ fun AppAppearanceScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Font Scale: ${(fontScale * 100).roundToInt()}%",
+                                text = "${(fontScale * 100).roundToInt()}%",
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -175,19 +177,19 @@ fun AppAppearanceScreen(
                             FilterChip(
                                 selected = (fontScale - 1.0f) in -0.05f..0.05f,
                                 onClick = { AuthManager.setFontScale(1.0f) },
-                                label = { Text("Default") },
+                                label = { Text("100%") },
                                 modifier = Modifier.weight(1f)
                             )
                             FilterChip(
                                 selected = (fontScale - 1.15f) in -0.05f..0.05f,
                                 onClick = { AuthManager.setFontScale(1.15f) },
-                                label = { Text("Large") },
+                                label = { Text("115%") },
                                 modifier = Modifier.weight(1f)
                             )
                             FilterChip(
                                 selected = (fontScale - 1.30f) in -0.05f..0.05f,
                                 onClick = { AuthManager.setFontScale(1.30f) },
-                                label = { Text("Extra Large") },
+                                label = { Text("130%") },
                                 modifier = Modifier.weight(1f)
                             )
                         }

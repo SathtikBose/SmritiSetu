@@ -1,10 +1,8 @@
 package com.example.smritisetu.ui.games
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,13 +16,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.smritisetu.data.AuthManager
+import com.example.smritisetu.data.LocalAppStrings
 import com.example.smritisetu.theme.GlassCard
 import com.example.smritisetu.theme.getGlassGradientBrush
+import com.example.smritisetu.theme.isAppInDarkTheme
 
-data class CleanGameItem(
-    val id: String,
+data class FiveGameItem(
     val title: String,
-    val category: String,
     val description: String,
     val tag: String,
     val icon: ImageVector,
@@ -35,54 +34,48 @@ data class CleanGameItem(
 fun GamesScreen(
     modifier: Modifier = Modifier
 ) {
-    val darkTheme = isSystemInDarkTheme()
-    val categories = listOf("All Activities", "Memory", "Attention", "Daily Living")
-    var selectedCategory by remember { mutableStateOf("All Activities") }
+    val themeMode by AuthManager.themeMode.collectAsState()
+    val darkTheme = isAppInDarkTheme(themeMode)
+    val strings = LocalAppStrings.current
 
-    val games = remember {
+    val games = remember(strings) {
         listOf(
-            CleanGameItem(
-                id = "mem_match",
-                title = "Cultural Memory Match",
-                category = "Memory",
-                description = "Gently match familiar pairs of North Eastern cultural symbols and instruments.",
-                tag = "Assam Heritage",
+            FiveGameItem(
+                title = strings.game1Title,
+                description = strings.game1Desc,
+                tag = strings.game1Tag,
                 icon = Icons.Default.Extension,
                 xpReward = 50
             ),
-            CleanGameItem(
-                id = "seq_recall",
-                title = "Tea Garden Sound Recall",
-                category = "Attention",
-                description = "Listen and follow calm audio and visual sequence patterns.",
-                tag = "Audio-Visual Focus",
+            FiveGameItem(
+                title = strings.game2Title,
+                description = strings.game2Desc,
+                tag = strings.game2Tag,
                 icon = Icons.Default.Audiotrack,
                 xpReward = 40
             ),
-            CleanGameItem(
-                id = "daily_routine",
-                title = "Daily Routine Recall",
-                category = "Daily Living",
-                description = "Arrange familiar morning and evening daily activities in natural order.",
-                tag = "Peace of Mind",
+            FiveGameItem(
+                title = strings.game3Title,
+                description = strings.game3Desc,
+                tag = strings.game3Tag,
                 icon = Icons.Default.WbSunny,
                 xpReward = 35
             ),
-            CleanGameItem(
-                id = "art_recog",
-                title = "Folk Crafts & Motifs",
-                category = "Memory",
-                description = "Recognize classic handloom weaving motifs and regional crafts.",
-                tag = "Visual Recall",
+            FiveGameItem(
+                title = strings.game4Title,
+                description = strings.game4Desc,
+                tag = strings.game4Tag,
                 icon = Icons.Default.Palette,
                 xpReward = 45
+            ),
+            FiveGameItem(
+                title = strings.game5Title,
+                description = strings.game5Desc,
+                tag = strings.game5Tag,
+                icon = Icons.Default.Spa,
+                xpReward = 30
             )
         )
-    }
-
-    val filteredGames = remember(selectedCategory) {
-        if (selectedCategory == "All Activities") games
-        else games.filter { it.category == selectedCategory }
     }
 
     Box(
@@ -101,45 +94,21 @@ fun GamesScreen(
             item {
                 Column {
                     Text(
-                        text = "Cognitive Games",
+                        text = strings.gamesTitle,
                         style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Adaptive, non-stressful exercises for memory stimulation",
+                        text = strings.gamesSubtitle,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            // Category Filter Row
-            item {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    items(categories) { category ->
-                        FilterChip(
-                            selected = selectedCategory == category,
-                            onClick = { selectedCategory = category },
-                            label = {
-                                Text(
-                                    text = category,
-                                    style = MaterialTheme.typography.labelLarge.copy(
-                                        fontWeight = if (selectedCategory == category) FontWeight.Bold else FontWeight.Medium
-                                    )
-                                )
-                            },
-                            shape = RoundedCornerShape(20.dp)
-                        )
-                    }
-                }
-            }
-
-            // Game Cards
-            items(filteredGames, key = { it.id }) { game ->
+            // 5 Game Cards
+            items(games) { game ->
                 GlassCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(24.dp),
@@ -211,9 +180,9 @@ fun GamesScreen(
                             }
 
                             Button(
-                                onClick = { /* Game trigger */ },
+                                onClick = { /* Game launcher */ },
                                 shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+                                contentPadding = PaddingValues(horizontal = 22.dp, vertical = 10.dp)
                             ) {
                                 Icon(
                                     Icons.Default.PlayArrow,
@@ -221,7 +190,7 @@ fun GamesScreen(
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Play", fontWeight = FontWeight.Bold)
+                                Text(strings.play, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

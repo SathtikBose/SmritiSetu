@@ -39,6 +39,8 @@ class AuthManagerTest {
     fun themeMode_updatesSuccessfully() {
         AuthManager.setThemeMode(AppThemeMode.DARK)
         assertEquals(AppThemeMode.DARK, AuthManager.themeMode.value)
+        AuthManager.setThemeMode(AppThemeMode.LIGHT)
+        assertEquals(AppThemeMode.LIGHT, AuthManager.themeMode.value)
         AuthManager.setThemeMode(AppThemeMode.HIGH_CONTRAST)
         assertEquals(AppThemeMode.HIGH_CONTRAST, AuthManager.themeMode.value)
     }
@@ -49,6 +51,21 @@ class AuthManagerTest {
         assertEquals(1.15f, AuthManager.fontScale.value, 0.001f)
         AuthManager.setFontScale(1.30f)
         assertEquals(1.30f, AuthManager.fontScale.value, 0.001f)
+    }
+
+    @Test
+    fun language_updatesSuccessfully() {
+        AuthManager.setLanguage(AppLanguage.HINDI)
+        assertEquals(AppLanguage.HINDI, AuthManager.selectedLanguage.value)
+        val hindiStrings = getStringsForLanguage(AppLanguage.HINDI)
+        assertEquals("स्मृति सेतु", hindiStrings.appNameNative)
+        assertEquals("होम", hindiStrings.navHome)
+
+        AuthManager.setLanguage(AppLanguage.ASSAMESE)
+        assertEquals(AppLanguage.ASSAMESE, AuthManager.selectedLanguage.value)
+        val asStrings = getStringsForLanguage(AppLanguage.ASSAMESE)
+        assertEquals("স্মৃতি সেতু", asStrings.appNameNative)
+        assertEquals("গৃহ", asStrings.navHome)
     }
 
     @Test

@@ -12,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -21,7 +20,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import com.example.smritisetu.data.AppLanguage
 import com.example.smritisetu.data.AppThemeMode
+import com.example.smritisetu.data.LocalAppStrings
+import com.example.smritisetu.data.getStringsForLanguage
 
 private val DarkColorScheme = darkColorScheme(
     primary = TealPrimaryLight,
@@ -30,14 +32,16 @@ private val DarkColorScheme = darkColorScheme(
     onPrimaryContainer = TealContainerLight,
     secondary = SecondaryWarmLight,
     onSecondary = Color(0xFF1C3531),
+    secondaryContainer = Color(0xFF233E3A),
+    onSecondaryContainer = Color(0xFFD4EDE7),
     tertiary = TertiaryGoldLight,
     onTertiary = Color(0xFF412D00),
-    background = BgGradientStartDark,
-    surface = Color(0xFF14221F),
-    onBackground = Color(0xFFE1E3E2),
-    onSurface = Color(0xFFE1E3E2),
-    surfaceVariant = Color(0xFF263633),
-    onSurfaceVariant = Color(0xFFBFC9C6)
+    background = Color(0xFF0D1816),
+    surface = Color(0xFF142421),
+    onBackground = Color(0xFFF1F5F4),
+    onSurface = Color(0xFFF1F5F4),
+    surfaceVariant = Color(0xFF263A36),
+    onSurfaceVariant = Color(0xFFCBD5D2)
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -53,12 +57,12 @@ private val LightColorScheme = lightColorScheme(
     onTertiary = Color.White,
     tertiaryContainer = Color(0xFFFFDEA3),
     onTertiaryContainer = Color(0xFF271900),
-    background = BgGradientStartLight,
-    surface = Color(0xFFF0F7F5),
-    onBackground = Color(0xFF191C1B),
-    onSurface = Color(0xFF191C1B),
-    surfaceVariant = Color(0xFFDBE5E2),
-    onSurfaceVariant = Color(0xFF3F4947)
+    background = Color(0xFFF5FAF8),
+    surface = Color(0xFFFFFFFF),
+    onBackground = Color(0xFF111D1B),
+    onSurface = Color(0xFF111D1B),
+    surfaceVariant = Color(0xFFE2EBE8),
+    onSurfaceVariant = Color(0xFF3B4D49)
 )
 
 private val HighContrastColorScheme = lightColorScheme(
@@ -72,16 +76,26 @@ private val HighContrastColorScheme = lightColorScheme(
     surface = Color.White,
     onBackground = Color.Black,
     onSurface = Color.Black,
-    surfaceVariant = Color(0xFFEEEEEE),
+    surfaceVariant = Color(0xFFE5E5E5),
     onSurfaceVariant = Color.Black
 )
 
 @Composable
 fun getGlassGradientBrush(darkTheme: Boolean): Brush {
     return if (darkTheme) {
-        Brush.verticalGradient(listOf(BgGradientStartDark, BgGradientEndDark))
+        Brush.verticalGradient(listOf(Color(0xFF0B1614), Color(0xFF142421), Color(0xFF0F1C19)))
     } else {
-        Brush.verticalGradient(listOf(BgGradientStartLight, BgGradientEndLight))
+        Brush.verticalGradient(listOf(Color(0xFFE3F3EF), Color(0xFFF4FAF8), Color(0xFFEBF7F4)))
+    }
+}
+
+@Composable
+fun isAppInDarkTheme(themeMode: AppThemeMode): Boolean {
+    return when (themeMode) {
+        AppThemeMode.SYSTEM -> isSystemInDarkTheme()
+        AppThemeMode.LIGHT -> false
+        AppThemeMode.DARK -> true
+        AppThemeMode.HIGH_CONTRAST -> false
     }
 }
 
@@ -94,8 +108,8 @@ fun GlassCard(
     onClick: (() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
-    val backgroundColor = if (darkTheme) GlassDarkSurface else GlassLightSurface
-    val borderColor = if (darkTheme) GlassBorderDark else GlassBorderLight
+    val backgroundColor = if (darkTheme) Color(0xCC1A2B27) else Color(0xE6FFFFFF)
+    val borderColor = if (darkTheme) Color(0x33FFFFFF) else Color(0x66FFFFFF)
 
     val clickableModifier = if (onClick != null) {
         modifier.clickable(onClick = onClick)
@@ -104,10 +118,10 @@ fun GlassCard(
     Surface(
         modifier = clickableModifier
             .shadow(
-                elevation = 6.dp,
+                elevation = 8.dp,
                 shape = shape,
-                ambientColor = Color.Black.copy(alpha = 0.05f),
-                spotColor = Color.Black.copy(alpha = 0.1f)
+                ambientColor = Color.Black.copy(alpha = if (darkTheme) 0.3f else 0.06f),
+                spotColor = Color.Black.copy(alpha = if (darkTheme) 0.5f else 0.12f)
             ),
         shape = shape,
         color = backgroundColor,
@@ -121,15 +135,11 @@ fun GlassCard(
 fun SmritiSetuTheme(
     themeMode: AppThemeMode = AppThemeMode.SYSTEM,
     fontScale: Float = 1.0f,
+    selectedLanguage: AppLanguage = AppLanguage.ASSAMESE,
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    val darkTheme = when (themeMode) {
-        AppThemeMode.SYSTEM -> isSystemInDarkTheme()
-        AppThemeMode.LIGHT -> false
-        AppThemeMode.DARK -> true
-        AppThemeMode.HIGH_CONTRAST -> false
-    }
+    val darkTheme = isAppInDarkTheme(themeMode)
 
     val colorScheme = when {
         themeMode == AppThemeMode.HIGH_CONTRAST -> HighContrastColorScheme
@@ -147,7 +157,12 @@ fun SmritiSetuTheme(
         fontScale = currentDensity.fontScale * fontScale
     )
 
-    CompositionLocalProvider(LocalDensity provides customDensity) {
+    val currentStrings = getStringsForLanguage(selectedLanguage)
+
+    CompositionLocalProvider(
+        LocalDensity provides customDensity,
+        LocalAppStrings provides currentStrings
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = Typography,

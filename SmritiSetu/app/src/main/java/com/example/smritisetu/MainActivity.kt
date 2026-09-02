@@ -21,8 +21,13 @@ class MainActivity : ComponentActivity() {
     setContent {
       val themeMode by AuthManager.themeMode.collectAsState()
       val fontScale by AuthManager.fontScale.collectAsState()
+      val selectedLanguage by AuthManager.selectedLanguage.collectAsState()
 
-      SmritiSetuTheme(themeMode = themeMode, fontScale = fontScale) {
+      SmritiSetuTheme(
+        themeMode = themeMode,
+        fontScale = fontScale,
+        selectedLanguage = selectedLanguage
+      ) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
           MainNavigation()
         }

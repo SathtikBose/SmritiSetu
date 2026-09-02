@@ -2,7 +2,6 @@ package com.example.smritisetu.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -20,10 +19,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.smritisetu.data.AppLanguage
 import com.example.smritisetu.data.AppThemeMode
 import com.example.smritisetu.data.AuthManager
+import com.example.smritisetu.data.LocalAppStrings
 import com.example.smritisetu.theme.GlassCard
 import com.example.smritisetu.theme.getGlassGradientBrush
+import com.example.smritisetu.theme.isAppInDarkTheme
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,15 +39,19 @@ fun SettingsScreen(
     val currentUser by AuthManager.currentUser.collectAsState()
     val themeMode by AuthManager.themeMode.collectAsState()
     val fontScale by AuthManager.fontScale.collectAsState()
-    val darkTheme = isSystemInDarkTheme()
+    val selectedLanguage by AuthManager.selectedLanguage.collectAsState()
+    val darkTheme = isAppInDarkTheme(themeMode)
+    val strings = LocalAppStrings.current
 
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
 
+    // Logout Dialog
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            title = { Text("Log Out?") },
-            text = { Text("Are you sure you want to log out of SmritiSetu?") },
+            title = { Text(strings.logout) },
+            text = { Text(strings.confirmLogout) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -55,12 +61,72 @@ fun SettingsScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Log Out")
+                    Text(strings.logout)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) {
-                    Text("Cancel")
+                    Text(strings.cancel)
+                }
+            }
+        )
+    }
+
+    // Language Chooser Dialog
+    if (showLanguageDialog) {
+        AlertDialog(
+            onDismissRequest = { showLanguageDialog = false },
+            title = { Text(strings.selectLanguage, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    AppLanguage.entries.forEach { lang ->
+                        val isSelected = selectedLanguage == lang
+                        Surface(
+                            onClick = {
+                                AuthManager.setLanguage(lang)
+                                showLanguageDialog = false
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = lang.nativeName,
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = lang.displayName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                if (isSelected) {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLanguageDialog = false }) {
+                    Text(strings.done)
                 }
             }
         )
@@ -81,7 +147,7 @@ fun SettingsScreen(
             // Header
             item {
                 Text(
-                    text = "Settings & Accessibility",
+                    text = strings.settingsTitle,
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onBackground
                 )
@@ -135,7 +201,7 @@ fun SettingsScreen(
                                 color = MaterialTheme.colorScheme.primary
                             ) {
                                 Text(
-                                    text = currentUser?.role?.displayName ?: "Caregiver",
+                                    text = if (currentUser?.role == com.example.smritisetu.data.UserRole.PATIENT) strings.rolePatient else strings.roleCaregiver,
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = MaterialTheme.colorScheme.onPrimary,
                                     modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
@@ -153,10 +219,70 @@ fun SettingsScreen(
                 }
             }
 
+            // Language Switcher Section
+            item {
+                Text(
+                    text = strings.language,
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+
+            item {
+                GlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    darkTheme = darkTheme,
+                    onClick = { showLanguageDialog = true }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            modifier = Modifier.size(42.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Translate,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = strings.language,
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "${selectedLanguage.nativeName} (${selectedLanguage.displayName})",
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+
             // Elder-Friendly Font Size Adjustment Bar
             item {
                 Text(
-                    text = "Elder Accessibility • Text Size",
+                    text = strings.fontSize,
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = 4.dp)
@@ -188,7 +314,7 @@ fun SettingsScreen(
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Text(
-                                    text = "Reading Font Size",
+                                    text = strings.fontSize,
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
@@ -202,7 +328,7 @@ fun SettingsScreen(
 
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Slide to adjust font size across the entire app for easy reading.",
+                            text = strings.fontSizeSubtitle,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -237,7 +363,7 @@ fun SettingsScreen(
                             )
                         }
 
-                        // Preset Chips
+                        // Presets
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -245,44 +371,21 @@ fun SettingsScreen(
                             FilterChip(
                                 selected = (fontScale - 1.0f) in -0.05f..0.05f,
                                 onClick = { AuthManager.setFontScale(1.0f) },
-                                label = { Text("Default") },
+                                label = { Text("100%") },
                                 modifier = Modifier.weight(1f)
                             )
                             FilterChip(
                                 selected = (fontScale - 1.15f) in -0.05f..0.05f,
                                 onClick = { AuthManager.setFontScale(1.15f) },
-                                label = { Text("Large") },
+                                label = { Text("115%") },
                                 modifier = Modifier.weight(1f)
                             )
                             FilterChip(
                                 selected = (fontScale - 1.30f) in -0.05f..0.05f,
                                 onClick = { AuthManager.setFontScale(1.30f) },
-                                label = { Text("Extra Large") },
+                                label = { Text("130%") },
                                 modifier = Modifier.weight(1f)
                             )
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Live Preview Box
-                        Surface(
-                            shape = RoundedCornerShape(14.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Text(
-                                    text = "Preview Text:",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "স্মৃতি সেতু • Clear, easy-to-read text for memory care.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            }
                         }
                     }
                 }
@@ -291,7 +394,7 @@ fun SettingsScreen(
             // Preferences Section
             item {
                 Text(
-                    text = "Preferences & Appearance",
+                    text = strings.themePreference,
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = 4.dp)
@@ -307,8 +410,13 @@ fun SettingsScreen(
                     Column(modifier = Modifier.padding(vertical = 4.dp)) {
                         CleanSettingsTile(
                             icon = Icons.Default.Palette,
-                            title = "App Appearance",
-                            subtitle = themeMode.displayName,
+                            title = strings.appearance,
+                            subtitle = when (themeMode) {
+                                AppThemeMode.SYSTEM -> strings.themeSystem
+                                AppThemeMode.LIGHT -> strings.themeLight
+                                AppThemeMode.DARK -> strings.themeDark
+                                AppThemeMode.HIGH_CONTRAST -> strings.themeHighContrast
+                            },
                             onClick = onNavigateToAppearance
                         )
                         HorizontalDivider(
@@ -316,9 +424,9 @@ fun SettingsScreen(
                             color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                         )
                         CleanSettingsTile(
-                            icon = Icons.Default.Translate,
-                            title = "Language",
-                            subtitle = currentUser?.preferredLanguage ?: "Assamese (অসমীয়া)",
+                            icon = Icons.Default.PersonOutline,
+                            title = strings.editProfile,
+                            subtitle = currentUser?.name ?: "User",
                             onClick = onNavigateToEditProfile
                         )
                     }
@@ -355,12 +463,12 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.width(14.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Google Account",
+                                text = strings.googleAccount,
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = if (currentUser?.isGoogleLinked == true) "Connected" else "Not connected",
+                                text = if (currentUser?.isGoogleLinked == true) strings.connected else strings.notConnected,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = if (currentUser?.isGoogleLinked == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -398,12 +506,12 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.width(14.dp))
                         Column {
                             Text(
-                                text = "App Version",
+                                text = strings.appVersion,
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "v1.0.0 (Build 102) • SIH26003 Glassmorphism Edition",
+                                text = "v1.0.0 (Build 103) • SIH26003 Multi-Language Edition",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -432,7 +540,7 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Log Out",
+                        text = strings.logout,
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                 }

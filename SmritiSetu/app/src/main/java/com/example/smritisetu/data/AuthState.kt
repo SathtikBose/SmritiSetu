@@ -12,8 +12,8 @@ enum class UserRole(val displayName: String) {
 
 enum class AppThemeMode(val displayName: String) {
     SYSTEM("System Default"),
-    LIGHT("Light"),
-    DARK("Dark"),
+    LIGHT("Light Glass"),
+    DARK("Dark Glass"),
     HIGH_CONTRAST("High Contrast (Elder-friendly)")
 }
 
@@ -44,11 +44,16 @@ object AuthManager {
     private val _fontScale = MutableStateFlow(1.0f)
     val fontScale: StateFlow<Float> = _fontScale.asStateFlow()
 
+    // In-App Multilingual Selection
+    private val _selectedLanguage = MutableStateFlow(AppLanguage.ASSAMESE)
+    val selectedLanguage: StateFlow<AppLanguage> = _selectedLanguage.asStateFlow()
+
     fun login(email: String, pass: String): Result<UserProfile> {
         val user = UserProfile(
             name = if (email.contains("@")) email.substringBefore("@").replaceFirstChar { it.uppercase() } else "User",
             email = email,
-            role = UserRole.CAREGIVER
+            role = UserRole.CAREGIVER,
+            preferredLanguage = _selectedLanguage.value.displayName
         )
         _currentUser.value = user
         _isLoggedIn.value = true
@@ -59,7 +64,8 @@ object AuthManager {
         val user = UserProfile(
             name = name.ifBlank { "User" },
             email = email,
-            role = role
+            role = role,
+            preferredLanguage = _selectedLanguage.value.displayName
         )
         _currentUser.value = user
         _isLoggedIn.value = true
@@ -71,7 +77,8 @@ object AuthManager {
             name = "Google User",
             email = "user.google@gmail.com",
             isGoogleLinked = true,
-            role = UserRole.PATIENT
+            role = UserRole.PATIENT,
+            preferredLanguage = _selectedLanguage.value.displayName
         )
         _currentUser.value = user
         _isLoggedIn.value = true
@@ -100,6 +107,10 @@ object AuthManager {
     }
 
     fun updateProfile(name: String, phone: String, language: String, role: UserRole) {
+        val matchingLang = AppLanguage.entries.find { it.displayName.equals(language, ignoreCase = true) || it.nativeName.equals(language, ignoreCase = true) }
+        if (matchingLang != null) {
+            _selectedLanguage.value = matchingLang
+        }
         _currentUser.update { current ->
             current?.copy(
                 name = name,
@@ -108,6 +119,11 @@ object AuthManager {
                 role = role
             )
         }
+    }
+
+    fun setLanguage(language: AppLanguage) {
+        _selectedLanguage.value = language
+        _currentUser.update { it?.copy(preferredLanguage = language.displayName) }
     }
 
     fun setThemeMode(mode: AppThemeMode) {

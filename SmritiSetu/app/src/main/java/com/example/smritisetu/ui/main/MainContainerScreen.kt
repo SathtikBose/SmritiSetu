@@ -2,9 +2,7 @@ package com.example.smritisetu.ui.main
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -14,13 +12,14 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.smritisetu.data.AuthManager
+import com.example.smritisetu.data.LocalAppStrings
 import com.example.smritisetu.theme.*
 import com.example.smritisetu.ui.games.GamesScreen
 import com.example.smritisetu.ui.home.HomeScreen
@@ -28,14 +27,13 @@ import com.example.smritisetu.ui.league.LeagueScreen
 import com.example.smritisetu.ui.settings.SettingsScreen
 
 enum class BottomNavTab(
-    val label: String,
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector
 ) {
-    HOME("Home", Icons.Filled.Home, Icons.Outlined.Home),
-    GAMES("Games", Icons.Filled.SportsEsports, Icons.Outlined.SportsEsports),
-    LEAGUE("League", Icons.Filled.EmojiEvents, Icons.Outlined.EmojiEvents),
-    SETTINGS("Settings", Icons.Filled.Settings, Icons.Outlined.Settings)
+    HOME(Icons.Filled.Home, Icons.Outlined.Home),
+    GAMES(Icons.Filled.SportsEsports, Icons.Outlined.SportsEsports),
+    LEAGUE(Icons.Filled.EmojiEvents, Icons.Outlined.EmojiEvents),
+    SETTINGS(Icons.Filled.Settings, Icons.Outlined.Settings)
 }
 
 @Composable
@@ -46,7 +44,9 @@ fun MainContainerScreen(
     modifier: Modifier = Modifier
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(BottomNavTab.HOME) }
-    val darkTheme = isSystemInDarkTheme()
+    val themeMode by AuthManager.themeMode.collectAsState()
+    val darkTheme = isAppInDarkTheme(themeMode)
+    val strings = LocalAppStrings.current
     val gradientBrush = getGlassGradientBrush(darkTheme)
 
     Box(
@@ -54,14 +54,14 @@ fun MainContainerScreen(
             .fillMaxSize()
             .background(gradientBrush)
     ) {
-        // Active Screen content with padding at bottom for floating nav
+        // Active Screen content
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = 84.dp)
+                .padding(bottom = 88.dp)
         ) {
             when (selectedTab) {
-                BottomNavTab.HOME -> HomeScreen(onNavigateToGames = { selectedTab = BottomNavTab.GAMES })
+                BottomNavTab.HOME -> HomeScreen()
                 BottomNavTab.GAMES -> GamesScreen()
                 BottomNavTab.LEAGUE -> LeagueScreen()
                 BottomNavTab.SETTINGS -> SettingsScreen(
@@ -79,18 +79,18 @@ fun MainContainerScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 14.dp)
         ) {
-            val navBgColor = if (darkTheme) GlassBottomNavDark else GlassBottomNavLight
-            val navBorderColor = if (darkTheme) GlassBorderDark else GlassBorderLight
+            val navBgColor = if (darkTheme) Color(0xEB162421) else Color(0xEBFFFFFF)
+            val navBorderColor = if (darkTheme) Color(0x33FFFFFF) else Color(0x66FFFFFF)
 
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(68.dp)
                     .shadow(
-                        elevation = 12.dp,
+                        elevation = 14.dp,
                         shape = RoundedCornerShape(32.dp),
-                        ambientColor = Color.Black.copy(alpha = 0.1f),
-                        spotColor = Color.Black.copy(alpha = 0.18f)
+                        ambientColor = Color.Black.copy(alpha = if (darkTheme) 0.35f else 0.08f),
+                        spotColor = Color.Black.copy(alpha = if (darkTheme) 0.55f else 0.15f)
                     ),
                 shape = RoundedCornerShape(32.dp),
                 color = navBgColor,
@@ -105,10 +105,17 @@ fun MainContainerScreen(
                 ) {
                     BottomNavTab.entries.forEach { tab ->
                         val isSelected = selectedTab == tab
+                        val label = when (tab) {
+                            BottomNavTab.HOME -> strings.navHome
+                            BottomNavTab.GAMES -> strings.navGames
+                            BottomNavTab.LEAGUE -> strings.navLeague
+                            BottomNavTab.SETTINGS -> strings.navSettings
+                        }
+
                         val activeContainerColor = if (darkTheme) {
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
                         } else {
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f)
                         }
 
                         Surface(
@@ -126,13 +133,13 @@ fun MainContainerScreen(
                             ) {
                                 Icon(
                                     imageVector = if (isSelected) tab.selectedIcon else tab.unselectedIcon,
-                                    contentDescription = tab.label,
+                                    contentDescription = label,
                                     tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(24.dp)
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = tab.label,
+                                    text = label,
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                         fontSize = 11.sp
