@@ -9,7 +9,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: "#818cf8", // indigo-400
         tabBarInactiveTintColor: "#94a3b8", // slate-400
         tabBarStyle: {
-          backgroundColor: "#0f172a", // slate-900
+          backgroundColor: "#020617", // slate-950
           borderTopColor: "#1e293b", // slate-800
         },
       }}

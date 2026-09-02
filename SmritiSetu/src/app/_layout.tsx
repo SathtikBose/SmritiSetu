@@ -4,7 +4,7 @@ import "../../global.css"; // Ensure global CSS is imported if nativewind v4 is 
 
 export default function RootLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
       <Stack.Screen name="(tabs)" />
     </Stack>
   );
