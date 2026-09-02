@@ -1,0 +1,55 @@
+package com.example.smritisetu.data
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+class AuthManagerTest {
+
+    @Before
+    fun setUp() {
+        AuthManager.logout()
+    }
+
+    @Test
+    fun login_success_setsUserAndLoggedIn() {
+        val result = AuthManager.login("test@smritisetu.org", "password123")
+        assertTrue(result.isSuccess)
+        assertTrue(AuthManager.isLoggedIn.value)
+        assertEquals("test@smritisetu.org", AuthManager.currentUser.value?.email)
+    }
+
+    @Test
+    fun signup_success_createsAccountWithRole() {
+        val result = AuthManager.signup("Biren Gogoi", "biren@smritisetu.org", "password123", UserRole.PATIENT)
+        assertTrue(result.isSuccess)
+        assertTrue(AuthManager.isLoggedIn.value)
+        assertEquals("Biren Gogoi", AuthManager.currentUser.value?.name)
+        assertEquals(UserRole.PATIENT, AuthManager.currentUser.value?.role)
+    }
+
+    @Test
+    fun verifyOtp_validOtp_resetsPassword() {
+        val result = AuthManager.verifyOtpAndResetPassword("biren@smritisetu.org", "123456", "newpass123")
+        assertTrue(result.isSuccess)
+    }
+
+    @Test
+    fun themeMode_updatesSuccessfully() {
+        AuthManager.setThemeMode(AppThemeMode.DARK)
+        assertEquals(AppThemeMode.DARK, AuthManager.themeMode.value)
+        AuthManager.setThemeMode(AppThemeMode.HIGH_CONTRAST)
+        assertEquals(AppThemeMode.HIGH_CONTRAST, AuthManager.themeMode.value)
+    }
+
+    @Test
+    fun updateProfile_updatesFields() {
+        AuthManager.login("ananya@smritisetu.org", "pass")
+        AuthManager.updateProfile("Dr. Ananya S.", "+91 99999 88888", "Assamese", UserRole.CAREGIVER)
+        val user = AuthManager.currentUser.value
+        assertEquals("Dr. Ananya S.", user?.name)
+        assertEquals("+91 99999 88888", user?.phone)
+        assertEquals("Assamese", user?.preferredLanguage)
+    }
+}
