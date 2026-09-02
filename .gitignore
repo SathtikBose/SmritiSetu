@@ -30,5 +30,33 @@ local.properties
 *.log
 *.tmp
 
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env
+.env.*
+!.env.example
+.env*.local
+
+# Local Spring Boot configuration (contains machine-specific database credentials)
+**/src/main/resources/application.properties
+
+# typescript
+*.tsbuildinfo
+
+example
+
+# generated native folders
+/ios
+/android
+.vscode
+.idea/
 
 
