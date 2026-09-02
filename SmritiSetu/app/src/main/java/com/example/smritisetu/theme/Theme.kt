@@ -1,11 +1,26 @@
 package com.example.smritisetu.theme
 
 import android.os.Build
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import com.example.smritisetu.data.AppThemeMode
 
 private val DarkColorScheme = darkColorScheme(
@@ -17,11 +32,11 @@ private val DarkColorScheme = darkColorScheme(
     onSecondary = Color(0xFF1C3531),
     tertiary = TertiaryGoldLight,
     onTertiary = Color(0xFF412D00),
-    background = Color(0xFF101413),
-    surface = Color(0xFF101413),
+    background = BgGradientStartDark,
+    surface = Color(0xFF14221F),
     onBackground = Color(0xFFE1E3E2),
     onSurface = Color(0xFFE1E3E2),
-    surfaceVariant = Color(0xFF3F4947),
+    surfaceVariant = Color(0xFF263633),
     onSurfaceVariant = Color(0xFFBFC9C6)
 )
 
@@ -38,8 +53,8 @@ private val LightColorScheme = lightColorScheme(
     onTertiary = Color.White,
     tertiaryContainer = Color(0xFFFFDEA3),
     onTertiaryContainer = Color(0xFF271900),
-    background = Color(0xFFFBFDFA),
-    surface = Color(0xFFFBFDFA),
+    background = BgGradientStartLight,
+    surface = Color(0xFFF0F7F5),
     onBackground = Color(0xFF191C1B),
     onSurface = Color(0xFF191C1B),
     surfaceVariant = Color(0xFFDBE5E2),
@@ -62,8 +77,50 @@ private val HighContrastColorScheme = lightColorScheme(
 )
 
 @Composable
+fun getGlassGradientBrush(darkTheme: Boolean): Brush {
+    return if (darkTheme) {
+        Brush.verticalGradient(listOf(BgGradientStartDark, BgGradientEndDark))
+    } else {
+        Brush.verticalGradient(listOf(BgGradientStartLight, BgGradientEndLight))
+    }
+}
+
+@Composable
+fun GlassCard(
+    modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(24.dp),
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    borderWidth: Float = 1.2f,
+    onClick: (() -> Unit)? = null,
+    content: @Composable BoxScope.() -> Unit
+) {
+    val backgroundColor = if (darkTheme) GlassDarkSurface else GlassLightSurface
+    val borderColor = if (darkTheme) GlassBorderDark else GlassBorderLight
+
+    val clickableModifier = if (onClick != null) {
+        modifier.clickable(onClick = onClick)
+    } else modifier
+
+    Surface(
+        modifier = clickableModifier
+            .shadow(
+                elevation = 6.dp,
+                shape = shape,
+                ambientColor = Color.Black.copy(alpha = 0.05f),
+                spotColor = Color.Black.copy(alpha = 0.1f)
+            ),
+        shape = shape,
+        color = backgroundColor,
+        border = BorderStroke(borderWidth.dp, borderColor)
+    ) {
+        Box(content = content)
+    }
+}
+
+@Composable
 fun SmritiSetuTheme(
     themeMode: AppThemeMode = AppThemeMode.SYSTEM,
+    fontScale: Float = 1.0f,
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
@@ -84,5 +141,17 @@ fun SmritiSetuTheme(
         else -> LightColorScheme
     }
 
-    MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+    val currentDensity = LocalDensity.current
+    val customDensity = Density(
+        density = currentDensity.density,
+        fontScale = currentDensity.fontScale * fontScale
+    )
+
+    CompositionLocalProvider(LocalDensity provides customDensity) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }

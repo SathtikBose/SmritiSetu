@@ -1,6 +1,7 @@
 package com.example.smritisetu.ui.games
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -17,65 +18,62 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.smritisetu.theme.GlassCard
+import com.example.smritisetu.theme.getGlassGradientBrush
 
-data class GameItem(
+data class CleanGameItem(
     val id: String,
     val title: String,
     val category: String,
     val description: String,
-    val regionalTheme: String,
-    val difficulty: String,
+    val tag: String,
     val icon: ImageVector,
     val xpReward: Int
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GamesScreen(
     modifier: Modifier = Modifier
 ) {
-    val categories = listOf("All Games", "Memory", "Attention", "Routine Recall")
-    var selectedCategory by remember { mutableStateOf("All Games") }
+    val darkTheme = isSystemInDarkTheme()
+    val categories = listOf("All Activities", "Memory", "Attention", "Daily Living")
+    var selectedCategory by remember { mutableStateOf("All Activities") }
 
     val games = remember {
         listOf(
-            GameItem(
+            CleanGameItem(
                 id = "mem_match",
-                title = "NER Cultural Memory Match",
+                title = "Cultural Memory Match",
                 category = "Memory",
-                description = "Pair culturally familiar North East symbols like Bihu Dhol, Rhinoceros, and Japi hats.",
-                regionalTheme = "Assam & NER Heritage",
-                difficulty = "Adaptive",
+                description = "Gently match familiar pairs of North Eastern cultural symbols and instruments.",
+                tag = "Assam Heritage",
                 icon = Icons.Default.Extension,
                 xpReward = 50
             ),
-            GameItem(
+            CleanGameItem(
                 id = "seq_recall",
-                title = "Tea Garden Sequence Recall",
+                title = "Tea Garden Sound Recall",
                 category = "Attention",
-                description = "Follow and repeat sound and visual patterns across tea estate markers.",
-                regionalTheme = "Audio-Visual Focus",
-                difficulty = "Level 2",
+                description = "Listen and follow calm audio and visual sequence patterns.",
+                tag = "Audio-Visual Focus",
                 icon = Icons.Default.Audiotrack,
                 xpReward = 40
             ),
-            GameItem(
+            CleanGameItem(
                 id = "daily_routine",
-                title = "Daily Routine Reasoning",
-                category = "Routine Recall",
-                description = "Organize daily morning, meal, prayer, and rest activities in logical order.",
-                regionalTheme = "Everyday Living",
-                difficulty = "Level 1",
+                title = "Daily Routine Recall",
+                category = "Daily Living",
+                description = "Arrange familiar morning and evening daily activities in natural order.",
+                tag = "Peace of Mind",
                 icon = Icons.Default.WbSunny,
                 xpReward = 35
             ),
-            GameItem(
-                id = "obj_recog",
-                title = "Festivals & Crafts Recognition",
+            CleanGameItem(
+                id = "art_recog",
+                title = "Folk Crafts & Motifs",
                 category = "Memory",
-                description = "Identify handloom motifs, musical instruments, and traditional attire.",
-                regionalTheme = "NER Folk Crafts",
-                difficulty = "Adaptive",
+                description = "Recognize classic handloom weaving motifs and regional crafts.",
+                tag = "Visual Recall",
                 icon = Icons.Default.Palette,
                 xpReward = 45
             )
@@ -83,42 +81,57 @@ fun GamesScreen(
     }
 
     val filteredGames = remember(selectedCategory) {
-        if (selectedCategory == "All Games") games
+        if (selectedCategory == "All Activities") games
         else games.filter { it.category == selectedCategory }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Cognitive Games",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                    )
-                }
-            )
-        },
-        modifier = modifier.fillMaxSize()
-    ) { paddingValues ->
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(getGlassGradientBrush(darkTheme))
+    ) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(vertical = 12.dp)
+            contentPadding = PaddingValues(top = 28.dp, bottom = 24.dp)
         ) {
-            // Category Filter Chips
+            // Header
+            item {
+                Column {
+                    Text(
+                        text = "Cognitive Games",
+                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Adaptive, non-stressful exercises for memory stimulation",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // Category Filter Row
             item {
                 LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     items(categories) { category ->
                         FilterChip(
                             selected = selectedCategory == category,
                             onClick = { selectedCategory = category },
-                            label = { Text(category) },
+                            label = {
+                                Text(
+                                    text = category,
+                                    style = MaterialTheme.typography.labelLarge.copy(
+                                        fontWeight = if (selectedCategory == category) FontWeight.Bold else FontWeight.Medium
+                                    )
+                                )
+                            },
                             shape = RoundedCornerShape(20.dp)
                         )
                     }
@@ -127,17 +140,15 @@ fun GamesScreen(
 
             // Game Cards
             items(filteredGames, key = { it.id }) { game ->
-                Card(
+                GlassCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-                    )
+                    shape = RoundedCornerShape(24.dp),
+                    darkTheme = darkTheme
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(18.dp)
+                            .padding(20.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -145,7 +156,7 @@ fun GamesScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(48.dp)
+                                    .size(50.dp)
                                     .clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.primaryContainer),
                                 contentAlignment = Alignment.Center
@@ -165,7 +176,7 @@ fun GamesScreen(
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = game.regionalTheme,
+                                    text = game.tag,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -180,43 +191,37 @@ fun GamesScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
-                        Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.fillMaxWidth()
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
                             ) {
-                                AssistChip(
-                                    onClick = {},
-                                    label = { Text(game.difficulty) },
-                                    leadingIcon = {
-                                        Icon(
-                                            Icons.Default.Tune,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                )
                                 Text(
                                     text = "+${game.xpReward} XP",
                                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.tertiary
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                                 )
                             }
 
                             Button(
-                                onClick = { /* Game launcher */ },
-                                shape = RoundedCornerShape(10.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                                onClick = { /* Game trigger */ },
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp)
                             ) {
-                                Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Play")
+                                Icon(
+                                    Icons.Default.PlayArrow,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Play", fontWeight = FontWeight.Bold)
                             }
                         }
                     }

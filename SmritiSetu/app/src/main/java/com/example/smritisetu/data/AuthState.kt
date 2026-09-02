@@ -40,6 +40,10 @@ object AuthManager {
     private val _themeMode = MutableStateFlow(AppThemeMode.SYSTEM)
     val themeMode: StateFlow<AppThemeMode> = _themeMode.asStateFlow()
 
+    // Dynamic Font Scaling for Elder Accessibility (0.85f to 1.35f)
+    private val _fontScale = MutableStateFlow(1.0f)
+    val fontScale: StateFlow<Float> = _fontScale.asStateFlow()
+
     fun login(email: String, pass: String): Result<UserProfile> {
         val user = UserProfile(
             name = if (email.contains("@")) email.substringBefore("@").replaceFirstChar { it.uppercase() } else "User",
@@ -108,6 +112,10 @@ object AuthManager {
 
     fun setThemeMode(mode: AppThemeMode) {
         _themeMode.value = mode
+    }
+
+    fun setFontScale(scale: Float) {
+        _fontScale.value = scale.coerceIn(0.85f, 1.35f)
     }
 
     fun logout() {

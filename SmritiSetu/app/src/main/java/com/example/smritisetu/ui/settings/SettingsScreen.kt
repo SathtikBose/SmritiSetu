@@ -2,6 +2,7 @@ package com.example.smritisetu.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -21,6 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smritisetu.data.AppThemeMode
 import com.example.smritisetu.data.AuthManager
+import com.example.smritisetu.theme.GlassCard
+import com.example.smritisetu.theme.getGlassGradientBrush
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,9 +36,10 @@ fun SettingsScreen(
 ) {
     val currentUser by AuthManager.currentUser.collectAsState()
     val themeMode by AuthManager.themeMode.collectAsState()
+    val fontScale by AuthManager.fontScale.collectAsState()
+    val darkTheme = isSystemInDarkTheme()
+
     var showLogoutDialog by remember { mutableStateOf(false) }
-    var snackbarHostState = remember { SnackbarHostState() }
-    var scope = rememberCoroutineScope()
 
     if (showLogoutDialog) {
         AlertDialog(
@@ -61,48 +66,44 @@ fun SettingsScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Settings",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                    )
-                }
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        modifier = modifier.fillMaxSize()
-    ) { paddingValues ->
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(getGlassGradientBrush(darkTheme))
+    ) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
-            contentPadding = PaddingValues(vertical = 12.dp)
+            contentPadding = PaddingValues(top = 28.dp, bottom = 24.dp)
         ) {
-            // Profile Card
+            // Header
             item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onNavigateToEditProfile() },
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                    )
+                Text(
+                    text = "Settings & Accessibility",
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            }
+
+            // Profile Card (Glassmorphic)
+            item {
+                GlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(26.dp),
+                    darkTheme = darkTheme,
+                    onClick = onNavigateToEditProfile
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(18.dp),
+                            .padding(20.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(56.dp)
+                                .size(58.dp)
                                 .clip(CircleShape)
                                 .background(MaterialTheme.colorScheme.primary),
                             contentAlignment = Alignment.Center
@@ -137,7 +138,7 @@ fun SettingsScreen(
                                     text = currentUser?.role?.displayName ?: "Caregiver",
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                                 )
                             }
                         }
@@ -152,102 +153,169 @@ fun SettingsScreen(
                 }
             }
 
-            // Account & Sign In Section
+            // Elder-Friendly Font Size Adjustment Bar
             item {
                 Text(
-                    text = "Account & Integration",
+                    text = "Elder Accessibility • Text Size",
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier.padding(top = 4.dp)
                 )
             }
 
             item {
-                Card(
+                GlassCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    shape = RoundedCornerShape(24.dp),
+                    darkTheme = darkTheme
                 ) {
-                    Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                        SettingsTile(
-                            icon = Icons.Default.PersonOutline,
-                            title = "Edit Profile",
-                            subtitle = "Name, phone number, and preferred language",
-                            onClick = onNavigateToEditProfile
-                        )
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                        
-                        // Google Sign-In status & Link
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp)
+                    ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surfaceVariant,
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = "G",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 18.sp,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.FormatSize,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
                                 Text(
-                                    text = "Google Account",
-                                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                                    text = "Reading Font Size",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
+                            }
+                            Text(
+                                text = "${(fontScale * 100).roundToInt()}%",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Slide to adjust font size across the entire app for easy reading.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Interactive Font Size Slider
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "A",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Slider(
+                                value = fontScale,
+                                onValueChange = { AuthManager.setFontScale(it) },
+                                valueRange = 0.85f..1.35f,
+                                steps = 3,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(horizontal = 8.dp)
+                            )
+                            Text(
+                                text = "A",
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        // Preset Chips
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilterChip(
+                                selected = (fontScale - 1.0f) in -0.05f..0.05f,
+                                onClick = { AuthManager.setFontScale(1.0f) },
+                                label = { Text("Default") },
+                                modifier = Modifier.weight(1f)
+                            )
+                            FilterChip(
+                                selected = (fontScale - 1.15f) in -0.05f..0.05f,
+                                onClick = { AuthManager.setFontScale(1.15f) },
+                                label = { Text("Large") },
+                                modifier = Modifier.weight(1f)
+                            )
+                            FilterChip(
+                                selected = (fontScale - 1.30f) in -0.05f..0.05f,
+                                onClick = { AuthManager.setFontScale(1.30f) },
+                                label = { Text("Extra Large") },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Live Preview Box
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
                                 Text(
-                                    text = if (currentUser?.isGoogleLinked == true) "Connected" else "Not connected",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = if (currentUser?.isGoogleLinked == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    text = "Preview Text:",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "স্মৃতি সেতু • Clear, easy-to-read text for memory care.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
-                            Switch(
-                                checked = currentUser?.isGoogleLinked == true,
-                                onCheckedChange = { checked ->
-                                    if (checked) AuthManager.linkGoogleAccount()
-                                    else AuthManager.unlinkGoogleAccount()
-                                }
-                            )
                         }
                     }
                 }
             }
 
-            // App Preferences
+            // Preferences Section
             item {
                 Text(
-                    text = "Preferences",
+                    text = "Preferences & Appearance",
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier.padding(top = 4.dp)
                 )
             }
 
             item {
-                Card(
+                GlassCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    shape = RoundedCornerShape(24.dp),
+                    darkTheme = darkTheme
                 ) {
                     Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                        SettingsTile(
+                        CleanSettingsTile(
                             icon = Icons.Default.Palette,
                             title = "App Appearance",
                             subtitle = themeMode.displayName,
                             onClick = onNavigateToAppearance
                         )
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                        SettingsTile(
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                        )
+                        CleanSettingsTile(
                             icon = Icons.Default.Translate,
                             title = "Language",
                             subtitle = currentUser?.preferredLanguage ?: "Assamese (অসমীয়া)",
@@ -257,42 +325,102 @@ fun SettingsScreen(
                 }
             }
 
-            // About & System
+            // Google Integration
             item {
-                Text(
-                    text = "About",
-                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-
-            item {
-                Card(
+                GlassCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    shape = RoundedCornerShape(24.dp),
+                    darkTheme = darkTheme
                 ) {
-                    Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                        SettingsTile(
-                            icon = Icons.Default.Info,
-                            title = "App Version",
-                            subtitle = "v1.0.0 (Build 101) • MDoNER SIH26003",
-                            onClick = {}
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.size(42.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "G",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Google Account",
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (currentUser?.isGoogleLinked == true) "Connected" else "Not connected",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (currentUser?.isGoogleLinked == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = currentUser?.isGoogleLinked == true,
+                            onCheckedChange = { checked ->
+                                if (checked) AuthManager.linkGoogleAccount()
+                                else AuthManager.unlinkGoogleAccount()
+                            }
                         )
                     }
                 }
             }
 
-            // Logout Action
+            // App Version
             item {
-                Spacer(modifier = Modifier.height(8.dp))
+                GlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    darkTheme = darkTheme
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column {
+                            Text(
+                                text = "App Version",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "v1.0.0 (Build 102) • SIH26003 Glassmorphism Edition",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Logout Button
+            item {
+                Spacer(modifier = Modifier.height(4.dp))
                 Button(
                     onClick = { showLogoutDialog = true },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(14.dp),
+                        .height(54.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.errorContainer,
                         contentColor = MaterialTheme.colorScheme.onErrorContainer
@@ -314,7 +442,7 @@ fun SettingsScreen(
 }
 
 @Composable
-fun SettingsTile(
+fun CleanSettingsTile(
     icon: ImageVector,
     title: String,
     subtitle: String,
@@ -324,13 +452,13 @@ fun SettingsTile(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 18.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
             shape = CircleShape,
             color = MaterialTheme.colorScheme.surfaceVariant,
-            modifier = Modifier.size(40.dp)
+            modifier = Modifier.size(42.dp)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(

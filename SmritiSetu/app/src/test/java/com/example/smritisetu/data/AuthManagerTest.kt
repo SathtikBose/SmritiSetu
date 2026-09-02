@@ -44,6 +44,14 @@ class AuthManagerTest {
     }
 
     @Test
+    fun fontScale_updatesSuccessfully() {
+        AuthManager.setFontScale(1.15f)
+        assertEquals(1.15f, AuthManager.fontScale.value, 0.001f)
+        AuthManager.setFontScale(1.30f)
+        assertEquals(1.30f, AuthManager.fontScale.value, 0.001f)
+    }
+
+    @Test
     fun updateProfile_updatesFields() {
         AuthManager.login("ananya@smritisetu.org", "pass")
         AuthManager.updateProfile("Dr. Ananya S.", "+91 99999 88888", "Assamese", UserRole.CAREGIVER)

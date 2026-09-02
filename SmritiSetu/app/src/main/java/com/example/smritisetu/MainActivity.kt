@@ -20,7 +20,9 @@ class MainActivity : ComponentActivity() {
     enableEdgeToEdge()
     setContent {
       val themeMode by AuthManager.themeMode.collectAsState()
-      SmritiSetuTheme(themeMode = themeMode) {
+      val fontScale by AuthManager.fontScale.collectAsState()
+
+      SmritiSetuTheme(themeMode = themeMode, fontScale = fontScale) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
           MainNavigation()
         }

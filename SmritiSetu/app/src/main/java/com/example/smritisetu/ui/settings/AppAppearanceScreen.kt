@@ -1,6 +1,8 @@
 package com.example.smritisetu.ui.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,8 +17,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.smritisetu.data.AppThemeMode
 import com.example.smritisetu.data.AuthManager
+import com.example.smritisetu.theme.GlassCard
+import com.example.smritisetu.theme.getGlassGradientBrush
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -25,11 +31,13 @@ fun AppAppearanceScreen(
     modifier: Modifier = Modifier
 ) {
     val themeMode by AuthManager.themeMode.collectAsState()
+    val fontScale by AuthManager.fontScale.collectAsState()
+    val darkTheme = isSystemInDarkTheme()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("App Appearance") },
+                title = { Text("App Appearance & Text") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
@@ -42,88 +50,148 @@ fun AppAppearanceScreen(
         },
         modifier = modifier.fillMaxSize()
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .background(getGlassGradientBrush(darkTheme))
         ) {
-            Text(
-                text = "Choose Theme",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onBackground
-            )
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Column(modifier = Modifier.padding(vertical = 4.dp)) {
-                    ThemeOptionRow(
-                        title = "System Default",
-                        description = "Matches your device's display setting",
-                        icon = Icons.Default.BrightnessAuto,
-                        isSelected = themeMode == AppThemeMode.SYSTEM,
-                        onClick = { AuthManager.setThemeMode(AppThemeMode.SYSTEM) }
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    ThemeOptionRow(
-                        title = "Light Theme",
-                        description = "Clean, bright background with vibrant colors",
-                        icon = Icons.Default.LightMode,
-                        isSelected = themeMode == AppThemeMode.LIGHT,
-                        onClick = { AuthManager.setThemeMode(AppThemeMode.LIGHT) }
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    ThemeOptionRow(
-                        title = "Dark Theme",
-                        description = "Gentle on the eyes in low light environments",
-                        icon = Icons.Default.DarkMode,
-                        isSelected = themeMode == AppThemeMode.DARK,
-                        onClick = { AuthManager.setThemeMode(AppThemeMode.DARK) }
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    ThemeOptionRow(
-                        title = "High Contrast Mode",
-                        description = "Optimized bold contrast for elderly users with low vision",
-                        icon = Icons.Default.Contrast,
-                        isSelected = themeMode == AppThemeMode.HIGH_CONTRAST,
-                        onClick = { AuthManager.setThemeMode(AppThemeMode.HIGH_CONTRAST) }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Accessibility Note Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                // Theme Mode Section
+                Text(
+                    text = "Theme Preference",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onBackground
                 )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+
+                GlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    darkTheme = darkTheme
                 ) {
-                    Icon(
-                        Icons.Default.AccessibilityNew,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(28.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "SmritiSetu includes elder-friendly touch targets and high legibility typography compliant with accessibility guidelines.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                        CleanThemeOptionRow(
+                            title = "System Default",
+                            description = "Follows your device system settings",
+                            icon = Icons.Default.BrightnessAuto,
+                            isSelected = themeMode == AppThemeMode.SYSTEM,
+                            onClick = { AuthManager.setThemeMode(AppThemeMode.SYSTEM) }
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                        )
+                        CleanThemeOptionRow(
+                            title = "Light Glass Theme",
+                            description = "Clean, translucent frost with gentle tones",
+                            icon = Icons.Default.LightMode,
+                            isSelected = themeMode == AppThemeMode.LIGHT,
+                            onClick = { AuthManager.setThemeMode(AppThemeMode.LIGHT) }
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                        )
+                        CleanThemeOptionRow(
+                            title = "Dark Glass Theme",
+                            description = "Calm, eye-soothing dark frosted surface",
+                            icon = Icons.Default.DarkMode,
+                            isSelected = themeMode == AppThemeMode.DARK,
+                            onClick = { AuthManager.setThemeMode(AppThemeMode.DARK) }
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                        )
+                        CleanThemeOptionRow(
+                            title = "High Contrast Mode",
+                            description = "High legibility contrast for low-vision elderly users",
+                            icon = Icons.Default.Contrast,
+                            isSelected = themeMode == AppThemeMode.HIGH_CONTRAST,
+                            onClick = { AuthManager.setThemeMode(AppThemeMode.HIGH_CONTRAST) }
+                        )
+                    }
+                }
+
+                // Font Size Section
+                Text(
+                    text = "Elderly Text Scaling",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+
+                GlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    darkTheme = darkTheme
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Font Scale: ${(fontScale * 100).roundToInt()}%",
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("A", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                            Slider(
+                                value = fontScale,
+                                onValueChange = { AuthManager.setFontScale(it) },
+                                valueRange = 0.85f..1.35f,
+                                steps = 3,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(horizontal = 8.dp)
+                            )
+                            Text("A", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        }
+
+                        // Presets
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilterChip(
+                                selected = (fontScale - 1.0f) in -0.05f..0.05f,
+                                onClick = { AuthManager.setFontScale(1.0f) },
+                                label = { Text("Default") },
+                                modifier = Modifier.weight(1f)
+                            )
+                            FilterChip(
+                                selected = (fontScale - 1.15f) in -0.05f..0.05f,
+                                onClick = { AuthManager.setFontScale(1.15f) },
+                                label = { Text("Large") },
+                                modifier = Modifier.weight(1f)
+                            )
+                            FilterChip(
+                                selected = (fontScale - 1.30f) in -0.05f..0.05f,
+                                onClick = { AuthManager.setFontScale(1.30f) },
+                                label = { Text("Extra Large") },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -131,7 +199,7 @@ fun AppAppearanceScreen(
 }
 
 @Composable
-fun ThemeOptionRow(
+fun CleanThemeOptionRow(
     title: String,
     description: String,
     icon: ImageVector,
@@ -142,7 +210,7 @@ fun ThemeOptionRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 18.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
