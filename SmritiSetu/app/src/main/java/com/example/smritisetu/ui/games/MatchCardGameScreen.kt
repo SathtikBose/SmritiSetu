@@ -61,6 +61,7 @@ private val culturalSymbols = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MatchCardGameScreen(
+    initialLevel: Int = 1,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -69,26 +70,49 @@ fun MatchCardGameScreen(
     val darkTheme = isAppInDarkTheme(themeMode)
     val strings = LocalAppStrings.current
 
-    var currentLevel by remember { mutableIntStateOf(1) }
+    var currentLevel by remember { mutableIntStateOf(initialLevel) }
     var triesCount by remember { mutableIntStateOf(0) }
     var hintsTriggeredCount by remember { mutableIntStateOf(0) }
     var levelStartTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var showVictoryDialog by remember { mutableStateOf(false) }
+    var showTimesUpDialog by remember { mutableStateOf(false) }
     var levelTimeElapsedSeconds by remember { mutableLongStateOf(0L) }
 
     val scope = rememberCoroutineScope()
 
-    // Determine number of pairs for current level
-    // Level 1: 2 pairs (4 cards)
-    // Level 2: 3 pairs (6 cards)
-    // Level 3: 4 pairs (8 cards)
-    // Level 4: 5 pairs (10 cards)
-    // Level 5: 6 pairs (12 cards)
-    // Level 6+: (Level - 1) % 5 + 2 pairs
+    // Determine difficulty parameters per level
     fun getPairCountForLevel(level: Int): Int {
         val basePairs = ((level - 1) % 5) + 2
         return basePairs.coerceIn(2, culturalSymbols.size)
     }
+
+    fun getTimeLimitForLevel(level: Int): Int {
+        return when {
+            level <= 5 -> (65 - (level * 5)).coerceAtLeast(35) // 60s down to 40s
+            level <= 10 -> (50 - ((level - 5) * 3)).coerceAtLeast(30) // 47s down to 35s
+            else -> (40 - ((level - 10) * 2)).coerceAtLeast(20) // 38s down to 20s
+        }
+    }
+
+    fun getIdleHintThresholdForLevel(level: Int): Long {
+        return when {
+            level <= 5 -> 5000L // 5 seconds on early levels
+            level <= 10 -> 6000L // 6 seconds
+            else -> 7000L // 7 seconds on harder levels
+        }
+    }
+
+    fun getDifficultyName(level: Int): String {
+        return when {
+            level <= 5 -> "EASY"
+            level <= 10 -> "NORMAL"
+            else -> "HARD"
+        }
+    }
+
+    // Time remaining state
+    val totalTimeLimit = remember(currentLevel) { getTimeLimitForLevel(currentLevel) }
+    var timeRemainingSeconds by remember(currentLevel) { mutableIntStateOf(totalTimeLimit) }
 
     // Generate cards for current level
     var cards by remember(currentLevel) {
@@ -109,24 +133,58 @@ fun MatchCardGameScreen(
     var secondSelectedCard by remember { mutableStateOf<CardItem?>(null) }
     var isProcessingMatch by remember { mutableStateOf(false) }
 
-    // Inactivity timer state: auto-highlight matching cards after 6 seconds of idle
+    // Inactivity timer state
     var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
-    LaunchedEffect(currentLevel) {
+    // Reset state on level change
+    fun resetCurrentLevel() {
         triesCount = 0
         hintsTriggeredCount = 0
         levelStartTime = System.currentTimeMillis()
         lastInteractionTime = System.currentTimeMillis()
+        timeRemainingSeconds = getTimeLimitForLevel(currentLevel)
         firstSelectedCard = null
         secondSelectedCard = null
         isProcessingMatch = false
         showVictoryDialog = false
+        showTimesUpDialog = false
+
+        val numPairs = getPairCountForLevel(currentLevel)
+        val selectedSymbols = culturalSymbols.shuffled().take(numPairs)
+        val cardList = mutableListOf<CardItem>()
+        var cardId = 0
+        selectedSymbols.forEachIndexed { pairIndex, (icon, label) ->
+            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = icon, label = label))
+            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = icon, label = label))
+        }
+        cardList.shuffle()
+        cards = cardList.toList()
     }
 
-    // Inactivity Auto-Highlight Hint Coroutine (6 seconds of no clicks)
-    LaunchedEffect(lastInteractionTime, cards, isProcessingMatch) {
-        if (!isProcessingMatch && cards.any { !it.isMatched }) {
-            delay(6000L) // 6 seconds idle threshold
+    LaunchedEffect(currentLevel) {
+        resetCurrentLevel()
+    }
+
+    // Live Countdown Timer Coroutine
+    LaunchedEffect(currentLevel, showVictoryDialog, showTimesUpDialog) {
+        if (!showVictoryDialog && !showTimesUpDialog) {
+            while (timeRemainingSeconds > 0) {
+                delay(1000L)
+                if (!showVictoryDialog && !showTimesUpDialog) {
+                    timeRemainingSeconds--
+                    if (timeRemainingSeconds <= 0) {
+                        showTimesUpDialog = true
+                    }
+                }
+            }
+        }
+    }
+
+    // Inactivity Auto-Highlight Hint Coroutine
+    val idleThreshold = remember(currentLevel) { getIdleHintThresholdForLevel(currentLevel) }
+    LaunchedEffect(lastInteractionTime, cards, isProcessingMatch, showVictoryDialog, showTimesUpDialog) {
+        if (!isProcessingMatch && !showVictoryDialog && !showTimesUpDialog && cards.any { !it.isMatched }) {
+            delay(idleThreshold)
             val unmatchedUnflipped = cards.filter { !it.isMatched && !it.isFlipped }
             if (unmatchedUnflipped.isNotEmpty()) {
                 val pairIdToHighlight = unmatchedUnflipped.first().pairId
@@ -156,7 +214,7 @@ fun MatchCardGameScreen(
 
     // Handle Card Click
     fun onCardClick(card: CardItem) {
-        if (isProcessingMatch || card.isFlipped || card.isMatched) return
+        if (isProcessingMatch || card.isFlipped || card.isMatched || showTimesUpDialog || showVictoryDialog) return
 
         lastInteractionTime = System.currentTimeMillis()
 
@@ -203,17 +261,74 @@ fun MatchCardGameScreen(
                         totalCards = cards.size,
                         timeElapsedMs = timeElapsedMs,
                         hintsUsed = hintsTriggeredCount,
-                        difficulty = "NORMAL"
+                        difficulty = getDifficultyName(currentLevel)
                     )
                     AuthManager.recordGameTelemetry(telemetryLog)
 
-                    // Award 15 XP + 200 Coins
+                    // Award 15 XP + 200 Coins & Unlock next level!
                     AuthManager.addRewards(xp = 15, coins = 200)
+                    AuthManager.unlockNextLevel(currentLevel)
 
                     showVictoryDialog = true
                 }
             }
         }
+    }
+
+    // Time's Up Dialog
+    if (showTimesUpDialog) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        Icons.Default.HourglassEmpty,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = strings.timesUp,
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            text = {
+                Text(
+                    text = strings.timesUpSubtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        resetCurrentLevel()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(strings.tryAgain, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = onNavigateBack,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(strings.selectLevel)
+                }
+            }
+        )
     }
 
     // Victory Dialog
@@ -326,7 +441,7 @@ fun MatchCardGameScreen(
                 Button(
                     onClick = {
                         showVictoryDialog = false
-                        currentLevel++ // Advance to next level (1..5, 6..10, 11..15, etc.)
+                        currentLevel++ // Advance to next level directly!
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp)
@@ -334,6 +449,14 @@ fun MatchCardGameScreen(
                     Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(strings.nextLevel, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = onNavigateBack,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(strings.selectLevel)
                 }
             }
         )
@@ -411,27 +534,46 @@ fun MatchCardGameScreen(
                     .padding(horizontal = 18.dp, vertical = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Game Subtitle / Hint Banner
+                // Info Bar: Live Timer + Tries Counter + Difficulty
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = strings.findPairs,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
+                    // Live Countdown Timer
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (timeRemainingSeconds <= 10) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Timer,
+                                contentDescription = "Timer",
+                                tint = if (timeRemainingSeconds <= 10) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "${timeRemainingSeconds}s",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = if (timeRemainingSeconds <= 10) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+
+                    // Tries Counter
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                     ) {
                         Text(
                             text = "${strings.tries}: $triesCount",
-                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                         )
                     }
                 }

@@ -1,6 +1,7 @@
 package com.example.smritisetu.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -15,6 +16,32 @@ class AuthManagerTest {
     @Test
     fun defaultLanguage_isEnglish() {
         assertEquals(AppLanguage.ENGLISH, AuthManager.selectedLanguage.value)
+    }
+
+    @Test
+    fun defaultLevels_firstFiveUnlocked() {
+        assertEquals(5, AuthManager.highestUnlockedLevel.value)
+        assertTrue(AuthManager.isLevelUnlocked(1))
+        assertTrue(AuthManager.isLevelUnlocked(2))
+        assertTrue(AuthManager.isLevelUnlocked(3))
+        assertTrue(AuthManager.isLevelUnlocked(4))
+        assertTrue(AuthManager.isLevelUnlocked(5))
+        assertFalse(AuthManager.isLevelUnlocked(6))
+        assertFalse(AuthManager.isLevelUnlocked(7))
+    }
+
+    @Test
+    fun unlockNextLevel_progressiveUnlocking() {
+        // Complete level 5 -> unlocks level 6
+        AuthManager.unlockNextLevel(5)
+        assertEquals(6, AuthManager.highestUnlockedLevel.value)
+        assertTrue(AuthManager.isLevelUnlocked(6))
+        assertFalse(AuthManager.isLevelUnlocked(7))
+
+        // Complete level 6 -> unlocks level 7
+        AuthManager.unlockNextLevel(6)
+        assertEquals(7, AuthManager.highestUnlockedLevel.value)
+        assertTrue(AuthManager.isLevelUnlocked(7))
     }
 
     @Test

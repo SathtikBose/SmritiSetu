@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlin.math.max
 
 enum class UserRole(val displayName: String) {
     PATIENT("Patient"),
@@ -63,9 +64,23 @@ object AuthManager {
     private val _selectedLanguage = MutableStateFlow(AppLanguage.ENGLISH)
     val selectedLanguage: StateFlow<AppLanguage> = _selectedLanguage.asStateFlow()
 
+    // Game Level Progression: Levels 1 to 5 are unlocked by default
+    private val _highestUnlockedLevel = MutableStateFlow(5)
+    val highestUnlockedLevel: StateFlow<Int> = _highestUnlockedLevel.asStateFlow()
+
     // Cognitive Telemetry Logs
     private val _telemetryLogs = MutableStateFlow<List<CognitiveGameLog>>(emptyList())
     val telemetryLogs: StateFlow<List<CognitiveGameLog>> = _telemetryLogs.asStateFlow()
+
+    fun isLevelUnlocked(level: Int): Boolean {
+        return level <= _highestUnlockedLevel.value
+    }
+
+    fun unlockNextLevel(completedLevel: Int) {
+        if (completedLevel >= _highestUnlockedLevel.value) {
+            _highestUnlockedLevel.value = completedLevel + 1
+        }
+    }
 
     fun login(email: String, pass: String): Result<UserProfile> {
         val user = UserProfile(
@@ -182,5 +197,6 @@ object AuthManager {
     fun logout() {
         _isLoggedIn.value = false
         _currentUser.value = null
+        _highestUnlockedLevel.value = 5
     }
 }
