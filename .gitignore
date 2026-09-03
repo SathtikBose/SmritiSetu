@@ -1,7 +1,6 @@
-
-
 # OS & IDE
 .DS_Store
+Thumbs.db
 .vscode/
 .idea/
 *.iml
@@ -10,13 +9,40 @@
 
 # Gradle & Build Artifacts
 .gradle/
-build/
+**/build/
 bin/
 out/
 /captures/
 .externalNativeBuild/
 .cxx/
 local.properties
+target/
+*.class
+
+# Python & Virtual Environments (10,000+ library files)
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+model/.venv/
+model/__pycache__/
+model/.pytest_cache/
+
+# Node & Package Managers
+node_modules/
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.tsbuildinfo
 
 # Secrets & Keystores
 *.jks
@@ -26,44 +52,15 @@ local.properties
 *.pem
 *.mobileprovision
 
-# Logs & temp
+# Logs & Temp
 *.log
 *.tmp
 
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
-.DS_Store
-*.pem
-
-# local env files
+# Local Environment & Secrets
 .env
 .env.*
 !.env.example
 .env*.local
 
-# Local Spring Boot configuration (contains machine-specific database credentials)
+# Local Spring Boot configuration
 **/src/main/resources/application.properties
-
-# typescript
-*.tsbuildinfo
-
-/example
-
-# generated native folders
-/ios
-/android
-.vscode
-.idea/
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-.venv/
-env/
-venv/
-.pytest_cache/
