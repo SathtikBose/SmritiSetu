@@ -40,7 +40,8 @@ enum class BottomNavTab(
 fun MainContainerScreen(
     onNavigateToEditProfile: () -> Unit,
     onNavigateToAppearance: () -> Unit,
-    onNavigateToMatchCardGame: () -> Unit = {},
+    onNavigateToLevelSelect: () -> Unit = {},
+    onNavigateToShop: () -> Unit = {},
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -62,9 +63,9 @@ fun MainContainerScreen(
                 .padding(bottom = 88.dp)
         ) {
             when (selectedTab) {
-                BottomNavTab.HOME -> HomeScreen()
+                BottomNavTab.HOME -> HomeScreen(onNavigateToShop = onNavigateToShop)
                 BottomNavTab.GAMES -> GamesScreen(
-                    onPlayMatchCardGame = onNavigateToMatchCardGame
+                    onPlayMatchCardGame = onNavigateToLevelSelect
                 )
                 BottomNavTab.LEAGUE -> LeagueScreen()
                 BottomNavTab.SETTINGS -> SettingsScreen(

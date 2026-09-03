@@ -10,9 +10,11 @@ import com.example.smritisetu.ui.auth.ForgotPasswordScreen
 import com.example.smritisetu.ui.auth.LoginScreen
 import com.example.smritisetu.ui.auth.SignupScreen
 import com.example.smritisetu.ui.games.MatchCardGameScreen
+import com.example.smritisetu.ui.games.MatchCardLevelSelectScreen
 import com.example.smritisetu.ui.main.MainContainerScreen
 import com.example.smritisetu.ui.settings.AppAppearanceScreen
 import com.example.smritisetu.ui.settings.EditProfileScreen
+import com.example.smritisetu.ui.shop.ShopScreen
 
 @Composable
 fun MainNavigation() {
@@ -55,7 +57,8 @@ fun MainNavigation() {
                     MainContainerScreen(
                         onNavigateToEditProfile = { backStack.add(EditProfileRoute) },
                         onNavigateToAppearance = { backStack.add(AppAppearanceRoute) },
-                        onNavigateToMatchCardGame = { backStack.add(MatchCardGameRoute) },
+                        onNavigateToLevelSelect = { backStack.add(MatchCardLevelSelectRoute) },
+                        onNavigateToShop = { backStack.add(ShopRoute) },
                         onLogout = {
                             backStack.clear()
                             backStack.add(LoginRoute)
@@ -72,8 +75,23 @@ fun MainNavigation() {
                         onNavigateBack = { backStack.removeLastOrNull() }
                     )
                 }
-                entry<MatchCardGameRoute> {
+                entry<ShopRoute> {
+                    ShopScreen(
+                        onNavigateBack = { backStack.removeLastOrNull() }
+                    )
+                }
+                entry<MatchCardLevelSelectRoute> {
+                    MatchCardLevelSelectScreen(
+                        onSelectLevel = { level ->
+                            backStack.add(MatchCardGameRoute(initialLevel = level))
+                        },
+                        onNavigateBack = { backStack.removeLastOrNull() }
+                    )
+                }
+                entry<MatchCardGameRoute> { route ->
                     MatchCardGameScreen(
+                        initialLevel = route.initialLevel,
+                        onNavigateToShop = { backStack.add(ShopRoute) },
                         onNavigateBack = { backStack.removeLastOrNull() }
                     )
                 }

@@ -53,44 +53,88 @@ private val culturalSymbols = listOf(
     Pair(Icons.Default.WbSunny, "River Dawn"),
     Pair(Icons.Default.LocalFlorist, "Kopou Orchid"),
     Pair(Icons.Default.Palette, "Gamusa Motif"),
-    Pair(Icons.Default.EmojiNature, "Kaziranga Nature"),
+    Pair(Icons.Default.EmojiNature, "Kaziranga Rhino"),
     Pair(Icons.Default.Star, "Golden Star"),
-    Pair(Icons.Default.CrueltyFree, "Peacock Spirit")
+    Pair(Icons.Default.CrueltyFree, "Peacock"),
+    Pair(Icons.Default.Notifications, "Temple Bell"),
+    Pair(Icons.Default.Park, "Rainforest"),
+    Pair(Icons.Default.Sailing, "River Boat"),
+    Pair(Icons.Default.Yard, "Muga Silk"),
+    Pair(Icons.Default.FilterVintage, "Sacred Lotus"),
+    Pair(Icons.Default.MusicNote, "Bihu Horn"),
+    Pair(Icons.Default.Favorite, "Warm Hearth"),
+    Pair(Icons.Default.Diamond, "Heritage Gem")
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MatchCardGameScreen(
+    initialLevel: Int = 1,
+    onNavigateToShop: () -> Unit = {},
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val themeMode by AuthManager.themeMode.collectAsState()
     val currentUser by AuthManager.currentUser.collectAsState()
+    val hintsCount by AuthManager.hintsCount.collectAsState()
+    val skipLevelCount by AuthManager.skipLevelCount.collectAsState()
     val darkTheme = isAppInDarkTheme(themeMode)
     val strings = LocalAppStrings.current
 
-    var currentLevel by remember { mutableIntStateOf(1) }
+    var currentLevel by remember { mutableIntStateOf(initialLevel) }
     var triesCount by remember { mutableIntStateOf(0) }
     var hintsTriggeredCount by remember { mutableIntStateOf(0) }
     var levelStartTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var showVictoryDialog by remember { mutableStateOf(false) }
+    var showTimesUpDialog by remember { mutableStateOf(false) }
+    var showBuyPromptDialog by remember { mutableStateOf<String?>(null) }
     var levelTimeElapsedSeconds by remember { mutableLongStateOf(0L) }
 
+    val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    // Determine number of pairs for current level
-    // Level 1: 2 pairs (4 cards)
-    // Level 2: 3 pairs (6 cards)
-    // Level 3: 4 pairs (8 cards)
-    // Level 4: 5 pairs (10 cards)
-    // Level 5: 6 pairs (12 cards)
-    // Level 6+: (Level - 1) % 5 + 2 pairs
+    // Determine monotonic pair count per level (e.g. Level 6 = 7 pairs / 14 cards, Level 7+ = 8 pairs / 16 cards)
     fun getPairCountForLevel(level: Int): Int {
-        val basePairs = ((level - 1) % 5) + 2
-        return basePairs.coerceIn(2, culturalSymbols.size)
+        return when (level) {
+            1 -> 2 // 4 cards
+            2 -> 3 // 6 cards
+            3 -> 4 // 8 cards
+            4 -> 5 // 10 cards
+            5 -> 6 // 12 cards
+            6 -> 7 // 14 cards
+            else -> 8 // 16 cards (elder vision cap with maximum symbol pool randomness)
+        }
     }
 
-    // Generate cards for current level
+    // Timers: Easy = 150s, Normal = 100s, Hard = 50s
+    fun getTimeLimitForLevel(level: Int): Int {
+        return when {
+            level <= 5 -> 150 // Easy 150s
+            level <= 10 -> 100 // Normal 100s
+            else -> 50 // Hard 50s
+        }
+    }
+
+    fun getIdleHintThresholdForLevel(level: Int): Long {
+        return when {
+            level <= 5 -> 5000L // 5 seconds on early levels
+            level <= 10 -> 6000L // 6 seconds
+            else -> 7000L // 7 seconds on harder levels
+        }
+    }
+
+    fun getDifficultyName(level: Int): String {
+        return when {
+            level <= 5 -> "EASY"
+            level <= 10 -> "NORMAL"
+            else -> "HARD"
+        }
+    }
+
+    // Time remaining state
+    var timeRemainingSeconds by remember(currentLevel) { mutableIntStateOf(getTimeLimitForLevel(currentLevel)) }
+
+    // Generate cards for current level with high randomness from 16-symbol pool
     var cards by remember(currentLevel) {
         val numPairs = getPairCountForLevel(currentLevel)
         val selectedSymbols = culturalSymbols.shuffled().take(numPairs)
@@ -109,24 +153,59 @@ fun MatchCardGameScreen(
     var secondSelectedCard by remember { mutableStateOf<CardItem?>(null) }
     var isProcessingMatch by remember { mutableStateOf(false) }
 
-    // Inactivity timer state: auto-highlight matching cards after 6 seconds of idle
+    // Inactivity timer state
     var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
-    LaunchedEffect(currentLevel) {
+    // Reset state on level change
+    fun resetCurrentLevel() {
         triesCount = 0
         hintsTriggeredCount = 0
         levelStartTime = System.currentTimeMillis()
         lastInteractionTime = System.currentTimeMillis()
+        timeRemainingSeconds = getTimeLimitForLevel(currentLevel)
         firstSelectedCard = null
         secondSelectedCard = null
         isProcessingMatch = false
         showVictoryDialog = false
+        showTimesUpDialog = false
+        showBuyPromptDialog = null
+
+        val numPairs = getPairCountForLevel(currentLevel)
+        val selectedSymbols = culturalSymbols.shuffled().take(numPairs)
+        val cardList = mutableListOf<CardItem>()
+        var cardId = 0
+        selectedSymbols.forEachIndexed { pairIndex, (icon, label) ->
+            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = icon, label = label))
+            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = icon, label = label))
+        }
+        cardList.shuffle()
+        cards = cardList.toList()
     }
 
-    // Inactivity Auto-Highlight Hint Coroutine (6 seconds of no clicks)
-    LaunchedEffect(lastInteractionTime, cards, isProcessingMatch) {
-        if (!isProcessingMatch && cards.any { !it.isMatched }) {
-            delay(6000L) // 6 seconds idle threshold
+    LaunchedEffect(currentLevel) {
+        resetCurrentLevel()
+    }
+
+    // Live Countdown Timer Coroutine
+    LaunchedEffect(currentLevel, showVictoryDialog, showTimesUpDialog) {
+        if (!showVictoryDialog && !showTimesUpDialog) {
+            while (timeRemainingSeconds > 0) {
+                delay(1000L)
+                if (!showVictoryDialog && !showTimesUpDialog) {
+                    timeRemainingSeconds--
+                    if (timeRemainingSeconds <= 0) {
+                        showTimesUpDialog = true
+                    }
+                }
+            }
+        }
+    }
+
+    // Inactivity Auto-Highlight Hint Coroutine
+    val idleThreshold = remember(currentLevel) { getIdleHintThresholdForLevel(currentLevel) }
+    LaunchedEffect(lastInteractionTime, cards, isProcessingMatch, showVictoryDialog, showTimesUpDialog) {
+        if (!isProcessingMatch && !showVictoryDialog && !showTimesUpDialog && cards.any { !it.isMatched }) {
+            delay(idleThreshold)
             val unmatchedUnflipped = cards.filter { !it.isMatched && !it.isFlipped }
             if (unmatchedUnflipped.isNotEmpty()) {
                 val pairIdToHighlight = unmatchedUnflipped.first().pairId
@@ -154,9 +233,49 @@ fun MatchCardGameScreen(
         label = "hintPulseScale"
     )
 
+    // Handle Hint Perk Trigger
+    fun triggerHintPerk() {
+        if (hintsCount > 0) {
+            val used = AuthManager.useHint()
+            if (used) {
+                val unmatched = cards.filter { !it.isMatched }
+                if (unmatched.isNotEmpty()) {
+                    val targetPairId = unmatched.first().pairId
+                    cards = cards.map {
+                        if (it.pairId == targetPairId) it.copy(isHighlighted = true) else it.copy(isHighlighted = false)
+                    }
+                    scope.launch { snackbarHostState.showSnackbar(strings.hintActive) }
+                }
+            }
+        } else {
+            showBuyPromptDialog = "hint"
+        }
+    }
+
+    // Handle Skip Level Perk Trigger
+    fun triggerSkipLevelPerk() {
+        if (skipLevelCount > 0) {
+            val used = AuthManager.useSkipLevel()
+            if (used) {
+                val timeElapsedMs = System.currentTimeMillis() - levelStartTime
+                levelTimeElapsedSeconds = timeElapsedMs / 1000
+
+                // Mark all cards as matched
+                cards = cards.map { it.copy(isMatched = true, isFlipped = true) }
+
+                AuthManager.addRewards(xp = 15, coins = 200)
+                AuthManager.unlockNextLevel(currentLevel)
+
+                showVictoryDialog = true
+            }
+        } else {
+            showBuyPromptDialog = "skip"
+        }
+    }
+
     // Handle Card Click
     fun onCardClick(card: CardItem) {
-        if (isProcessingMatch || card.isFlipped || card.isMatched) return
+        if (isProcessingMatch || card.isFlipped || card.isMatched || showTimesUpDialog || showVictoryDialog) return
 
         lastInteractionTime = System.currentTimeMillis()
 
@@ -203,17 +322,120 @@ fun MatchCardGameScreen(
                         totalCards = cards.size,
                         timeElapsedMs = timeElapsedMs,
                         hintsUsed = hintsTriggeredCount,
-                        difficulty = "NORMAL"
+                        difficulty = getDifficultyName(currentLevel)
                     )
                     AuthManager.recordGameTelemetry(telemetryLog)
 
-                    // Award 15 XP + 200 Coins
+                    // Award 15 XP + 200 Coins & Unlock next level!
                     AuthManager.addRewards(xp = 15, coins = 200)
+                    AuthManager.unlockNextLevel(currentLevel)
 
                     showVictoryDialog = true
                 }
             }
         }
+    }
+
+    // Quick Buy Prompt Dialog when 0 perks remaining
+    if (showBuyPromptDialog != null) {
+        AlertDialog(
+            onDismissRequest = { showBuyPromptDialog = null },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Storefront,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (showBuyPromptDialog == "hint") strings.buyHint else strings.buySkipLevel,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+            },
+            text = {
+                Text(
+                    text = if (showBuyPromptDialog == "hint") strings.noHintsLeft else strings.noSkipsLeft,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showBuyPromptDialog = null
+                        onNavigateToShop()
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.ShoppingCart, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Visit Shop", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBuyPromptDialog = null }) {
+                    Text(strings.cancel)
+                }
+            }
+        )
+    }
+
+    // Time's Up Dialog (User must replay level)
+    if (showTimesUpDialog) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        Icons.Default.HourglassEmpty,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = strings.timesUp,
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            text = {
+                Text(
+                    text = strings.timesUpSubtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        resetCurrentLevel()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(strings.replayGame, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = onNavigateBack,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(strings.selectLevel)
+                }
+            }
+        )
     }
 
     // Victory Dialog
@@ -326,7 +548,7 @@ fun MatchCardGameScreen(
                 Button(
                     onClick = {
                         showVictoryDialog = false
-                        currentLevel++ // Advance to next level (1..5, 6..10, 11..15, etc.)
+                        currentLevel++ // Advance to next level directly!
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(14.dp)
@@ -335,11 +557,20 @@ fun MatchCardGameScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(strings.nextLevel, fontWeight = FontWeight.Bold)
                 }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = onNavigateBack,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(strings.selectLevel)
+                }
             }
         )
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -361,8 +592,9 @@ fun MatchCardGameScreen(
                             )
                         }
 
-                        // Top-Right Coins Balance Counter
+                        // Top-Right Coins Balance Counter (Clickable to open Shop)
                         Surface(
+                            onClick = onNavigateToShop,
                             shape = RoundedCornerShape(18.dp),
                             color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.85f),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.4f))
@@ -394,8 +626,79 @@ fun MatchCardGameScreen(
                             contentDescription = strings.back
                         )
                     }
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToShop) {
+                        Icon(
+                            imageVector = Icons.Default.Storefront,
+                            contentDescription = "Shop",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             )
+        },
+        bottomBar = {
+            // In-Game Bottom Perks Bar
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                shape = RoundedCornerShape(22.dp),
+                color = if (darkTheme) Color(0xEB162421) else Color(0xEBFFFFFF),
+                border = BorderStroke(1.dp, if (darkTheme) Color(0x33FFFFFF) else Color(0x66FFFFFF)),
+                shadowElevation = 8.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Hint Perk Button
+                    OutlinedButton(
+                        onClick = { triggerHintPerk() },
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f),
+                        border = BorderStroke(1.2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lightbulb,
+                            contentDescription = strings.useHint,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "${strings.useHint} ($hintsCount)",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    // Skip Level Perk Button
+                    OutlinedButton(
+                        onClick = { triggerSkipLevelPerk() },
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f),
+                        border = BorderStroke(1.2.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FastForward,
+                            contentDescription = strings.useSkip,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "${strings.useSkip} ($skipLevelCount)",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            }
         },
         modifier = modifier.fillMaxSize()
     ) { paddingValues ->
@@ -408,30 +711,49 @@ fun MatchCardGameScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 18.dp, vertical = 12.dp),
+                    .padding(horizontal = 18.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Game Subtitle / Hint Banner
+                // Info Bar: Live Timer + Tries Counter + Difficulty
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = strings.findPairs,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
+                    // Live Countdown Timer
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (timeRemainingSeconds <= 15) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Timer,
+                                contentDescription = "Timer",
+                                tint = if (timeRemainingSeconds <= 15) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "${timeRemainingSeconds}s",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = if (timeRemainingSeconds <= 15) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+
+                    // Tries Counter
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                     ) {
                         Text(
                             text = "${strings.tries}: $triesCount",
-                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         )
                     }
                 }
@@ -440,7 +762,7 @@ fun MatchCardGameScreen(
                     Spacer(modifier = Modifier.height(6.dp))
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f)
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f)
                     ) {
                         Text(
                             text = strings.hintActive,
@@ -451,19 +773,23 @@ fun MatchCardGameScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                // Card Grid (2 to 3 columns depending on card count)
-                val gridColumns = if (cards.size <= 6) 2 else 3
+                // Card Grid: 2 columns for <= 6 cards, 3 columns for 8 to 12 cards, 4 columns for 14 to 16 cards
+                val gridColumns = when {
+                    cards.size <= 6 -> 2
+                    cards.size <= 12 -> 3
+                    else -> 4
+                }
 
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(gridColumns),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    contentPadding = PaddingValues(bottom = 16.dp)
+                    contentPadding = PaddingValues(bottom = 12.dp)
                 ) {
                     items(cards, key = { it.id }) { card ->
                         val isRevealed = card.isFlipped || card.isMatched
@@ -490,14 +816,14 @@ fun MatchCardGameScreen(
                                 .clickable(enabled = !isRevealed && !isProcessingMatch) {
                                     onCardClick(card)
                                 },
-                            shape = RoundedCornerShape(20.dp),
+                            shape = RoundedCornerShape(16.dp),
                             color = cardBgColor,
                             border = borderStroke,
-                            shadowElevation = if (card.isHighlighted) 8.dp else 4.dp
+                            shadowElevation = if (card.isHighlighted) 8.dp else 3.dp
                         ) {
                             Box(
                                 contentAlignment = Alignment.Center,
-                                modifier = Modifier.fillMaxSize().padding(8.dp)
+                                modifier = Modifier.fillMaxSize().padding(6.dp)
                             ) {
                                 if (isRevealed) {
                                     Column(
@@ -508,24 +834,24 @@ fun MatchCardGameScreen(
                                             imageVector = card.icon,
                                             contentDescription = card.label,
                                             tint = if (card.isMatched) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                                            modifier = Modifier.size(36.dp)
+                                            modifier = Modifier.size(if (gridColumns == 4) 26.dp else 34.dp)
                                         )
-                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Spacer(modifier = Modifier.height(2.dp))
                                         Text(
                                             text = card.label,
                                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                                             color = MaterialTheme.colorScheme.onSurface,
                                             textAlign = TextAlign.Center,
-                                            fontSize = 10.sp
+                                            fontSize = if (gridColumns == 4) 8.sp else 10.sp,
+                                            maxLines = 1
                                         )
                                     }
                                 } else {
-                                    // Hidden card back (Serene Lotus / Smriti symbol)
                                     Icon(
                                         imageVector = Icons.Default.Psychology,
                                         contentDescription = "Hidden Card",
                                         tint = if (card.isHighlighted) Color(0xFFD97706) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                        modifier = Modifier.size(32.dp)
+                                        modifier = Modifier.size(if (gridColumns == 4) 24.dp else 30.dp)
                                     )
                                 }
                             }

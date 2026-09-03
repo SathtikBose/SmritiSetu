@@ -22,4 +22,10 @@ data object EditProfileRoute : NavKey
 data object AppAppearanceRoute : NavKey
 
 @Serializable
-data object MatchCardGameRoute : NavKey
+data object ShopRoute : NavKey
+
+@Serializable
+data object MatchCardLevelSelectRoute : NavKey
+
+@Serializable
+data class MatchCardGameRoute(val initialLevel: Int = 1) : NavKey

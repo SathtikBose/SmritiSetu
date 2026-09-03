@@ -1,6 +1,7 @@
 package com.example.smritisetu.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -15,6 +16,88 @@ class AuthManagerTest {
     @Test
     fun defaultLanguage_isEnglish() {
         assertEquals(AppLanguage.ENGLISH, AuthManager.selectedLanguage.value)
+    }
+
+    @Test
+    fun defaultPerks_zero() {
+        assertEquals(0, AuthManager.hintsCount.value)
+        assertEquals(0, AuthManager.skipLevelCount.value)
+    }
+
+    @Test
+    fun buyPerk_hint_deducts1000Coins_andIncrementsCount() {
+        AuthManager.login("user@smritisetu.org", "pass")
+        // Start with 1000 coins
+        assertEquals(1000, AuthManager.currentUser.value?.coins)
+
+        val result = AuthManager.buyPerk(PerkType.HINT)
+        assertTrue(result.isSuccess)
+        assertEquals(0, AuthManager.currentUser.value?.coins)
+        assertEquals(1, AuthManager.hintsCount.value)
+
+        // Try to buy again with 0 coins -> failure
+        val failedResult = AuthManager.buyPerk(PerkType.HINT)
+        assertTrue(failedResult.isFailure)
+        assertEquals(1, AuthManager.hintsCount.value)
+    }
+
+    @Test
+    fun buyPerk_skipLevel_deducts2000Coins() {
+        AuthManager.login("user@smritisetu.org", "pass")
+        // Add 2000 coins (total 3000)
+        AuthManager.addRewards(xp = 0, coins = 2000)
+        assertEquals(3000, AuthManager.currentUser.value?.coins)
+
+        val result = AuthManager.buyPerk(PerkType.SKIP_LEVEL)
+        assertTrue(result.isSuccess)
+        assertEquals(1000, AuthManager.currentUser.value?.coins)
+        assertEquals(1, AuthManager.skipLevelCount.value)
+
+        // Use skip
+        val used = AuthManager.useSkipLevel()
+        assertTrue(used)
+        assertEquals(0, AuthManager.skipLevelCount.value)
+    }
+
+    @Test
+    fun useHint_decrementsCountWhenAvailable() {
+        AuthManager.login("user@smritisetu.org", "pass")
+        // No hints initially
+        assertFalse(AuthManager.useHint())
+
+        // Buy a hint
+        AuthManager.buyPerk(PerkType.HINT)
+        assertEquals(1, AuthManager.hintsCount.value)
+
+        // Use hint
+        assertTrue(AuthManager.useHint())
+        assertEquals(0, AuthManager.hintsCount.value)
+    }
+
+    @Test
+    fun defaultLevels_firstFiveUnlocked() {
+        assertEquals(5, AuthManager.highestUnlockedLevel.value)
+        assertTrue(AuthManager.isLevelUnlocked(1))
+        assertTrue(AuthManager.isLevelUnlocked(2))
+        assertTrue(AuthManager.isLevelUnlocked(3))
+        assertTrue(AuthManager.isLevelUnlocked(4))
+        assertTrue(AuthManager.isLevelUnlocked(5))
+        assertFalse(AuthManager.isLevelUnlocked(6))
+        assertFalse(AuthManager.isLevelUnlocked(7))
+    }
+
+    @Test
+    fun unlockNextLevel_progressiveUnlocking() {
+        // Complete level 5 -> unlocks level 6
+        AuthManager.unlockNextLevel(5)
+        assertEquals(6, AuthManager.highestUnlockedLevel.value)
+        assertTrue(AuthManager.isLevelUnlocked(6))
+        assertFalse(AuthManager.isLevelUnlocked(7))
+
+        // Complete level 6 -> unlocks level 7
+        AuthManager.unlockNextLevel(6)
+        assertEquals(7, AuthManager.highestUnlockedLevel.value)
+        assertTrue(AuthManager.isLevelUnlocked(7))
     }
 
     @Test
