@@ -53,15 +53,24 @@ private val culturalSymbols = listOf(
     Pair(Icons.Default.WbSunny, "River Dawn"),
     Pair(Icons.Default.LocalFlorist, "Kopou Orchid"),
     Pair(Icons.Default.Palette, "Gamusa Motif"),
-    Pair(Icons.Default.EmojiNature, "Kaziranga Nature"),
+    Pair(Icons.Default.EmojiNature, "Kaziranga Rhino"),
     Pair(Icons.Default.Star, "Golden Star"),
-    Pair(Icons.Default.CrueltyFree, "Peacock Spirit")
+    Pair(Icons.Default.CrueltyFree, "Peacock"),
+    Pair(Icons.Default.Notifications, "Temple Bell"),
+    Pair(Icons.Default.Park, "Rainforest"),
+    Pair(Icons.Default.Sailing, "River Boat"),
+    Pair(Icons.Default.Yard, "Muga Silk"),
+    Pair(Icons.Default.FilterVintage, "Sacred Lotus"),
+    Pair(Icons.Default.MusicNote, "Bihu Horn"),
+    Pair(Icons.Default.Favorite, "Warm Hearth"),
+    Pair(Icons.Default.Diamond, "Heritage Gem")
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MatchCardGameScreen(
     initialLevel: Int = 1,
+    onNavigateToShop: () -> Unit = {},
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -78,15 +87,23 @@ fun MatchCardGameScreen(
     var levelStartTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var showVictoryDialog by remember { mutableStateOf(false) }
     var showTimesUpDialog by remember { mutableStateOf(false) }
+    var showBuyPromptDialog by remember { mutableStateOf<String?>(null) }
     var levelTimeElapsedSeconds by remember { mutableLongStateOf(0L) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    // Determine difficulty parameters per level
+    // Determine monotonic pair count per level (e.g. Level 6 = 7 pairs / 14 cards, Level 7+ = 8 pairs / 16 cards)
     fun getPairCountForLevel(level: Int): Int {
-        val basePairs = ((level - 1) % 5) + 2
-        return basePairs.coerceIn(2, culturalSymbols.size)
+        return when (level) {
+            1 -> 2 // 4 cards
+            2 -> 3 // 6 cards
+            3 -> 4 // 8 cards
+            4 -> 5 // 10 cards
+            5 -> 6 // 12 cards
+            6 -> 7 // 14 cards
+            else -> 8 // 16 cards (elder vision cap with maximum symbol pool randomness)
+        }
     }
 
     // Timers: Easy = 150s, Normal = 100s, Hard = 50s
@@ -117,7 +134,7 @@ fun MatchCardGameScreen(
     // Time remaining state
     var timeRemainingSeconds by remember(currentLevel) { mutableIntStateOf(getTimeLimitForLevel(currentLevel)) }
 
-    // Generate cards for current level
+    // Generate cards for current level with high randomness from 16-symbol pool
     var cards by remember(currentLevel) {
         val numPairs = getPairCountForLevel(currentLevel)
         val selectedSymbols = culturalSymbols.shuffled().take(numPairs)
@@ -151,6 +168,7 @@ fun MatchCardGameScreen(
         isProcessingMatch = false
         showVictoryDialog = false
         showTimesUpDialog = false
+        showBuyPromptDialog = null
 
         val numPairs = getPairCountForLevel(currentLevel)
         val selectedSymbols = culturalSymbols.shuffled().take(numPairs)
@@ -230,7 +248,7 @@ fun MatchCardGameScreen(
                 }
             }
         } else {
-            scope.launch { snackbarHostState.showSnackbar(strings.noHintsLeft) }
+            showBuyPromptDialog = "hint"
         }
     }
 
@@ -251,7 +269,7 @@ fun MatchCardGameScreen(
                 showVictoryDialog = true
             }
         } else {
-            scope.launch { snackbarHostState.showSnackbar(strings.noSkipsLeft) }
+            showBuyPromptDialog = "skip"
         }
     }
 
@@ -316,6 +334,52 @@ fun MatchCardGameScreen(
                 }
             }
         }
+    }
+
+    // Quick Buy Prompt Dialog when 0 perks remaining
+    if (showBuyPromptDialog != null) {
+        AlertDialog(
+            onDismissRequest = { showBuyPromptDialog = null },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Storefront,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (showBuyPromptDialog == "hint") strings.buyHint else strings.buySkipLevel,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+            },
+            text = {
+                Text(
+                    text = if (showBuyPromptDialog == "hint") strings.noHintsLeft else strings.noSkipsLeft,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showBuyPromptDialog = null
+                        onNavigateToShop()
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.ShoppingCart, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Visit Shop", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBuyPromptDialog = null }) {
+                    Text(strings.cancel)
+                }
+            }
+        )
     }
 
     // Time's Up Dialog (User must replay level)
@@ -528,8 +592,9 @@ fun MatchCardGameScreen(
                             )
                         }
 
-                        // Top-Right Coins Balance Counter
+                        // Top-Right Coins Balance Counter (Clickable to open Shop)
                         Surface(
+                            onClick = onNavigateToShop,
                             shape = RoundedCornerShape(18.dp),
                             color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.85f),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.4f))
@@ -559,6 +624,15 @@ fun MatchCardGameScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = strings.back
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToShop) {
+                        Icon(
+                            imageVector = Icons.Default.Storefront,
+                            contentDescription = "Shop",
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -701,13 +775,17 @@ fun MatchCardGameScreen(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Card Grid (2 to 3 columns depending on card count)
-                val gridColumns = if (cards.size <= 6) 2 else 3
+                // Card Grid: 2 columns for <= 6 cards, 3 columns for 8 to 12 cards, 4 columns for 14 to 16 cards
+                val gridColumns = when {
+                    cards.size <= 6 -> 2
+                    cards.size <= 12 -> 3
+                    else -> 4
+                }
 
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(gridColumns),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
@@ -738,14 +816,14 @@ fun MatchCardGameScreen(
                                 .clickable(enabled = !isRevealed && !isProcessingMatch) {
                                     onCardClick(card)
                                 },
-                            shape = RoundedCornerShape(20.dp),
+                            shape = RoundedCornerShape(16.dp),
                             color = cardBgColor,
                             border = borderStroke,
-                            shadowElevation = if (card.isHighlighted) 8.dp else 4.dp
+                            shadowElevation = if (card.isHighlighted) 8.dp else 3.dp
                         ) {
                             Box(
                                 contentAlignment = Alignment.Center,
-                                modifier = Modifier.fillMaxSize().padding(8.dp)
+                                modifier = Modifier.fillMaxSize().padding(6.dp)
                             ) {
                                 if (isRevealed) {
                                     Column(
@@ -756,15 +834,16 @@ fun MatchCardGameScreen(
                                             imageVector = card.icon,
                                             contentDescription = card.label,
                                             tint = if (card.isMatched) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                                            modifier = Modifier.size(36.dp)
+                                            modifier = Modifier.size(if (gridColumns == 4) 26.dp else 34.dp)
                                         )
-                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Spacer(modifier = Modifier.height(2.dp))
                                         Text(
                                             text = card.label,
                                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                                             color = MaterialTheme.colorScheme.onSurface,
                                             textAlign = TextAlign.Center,
-                                            fontSize = 10.sp
+                                            fontSize = if (gridColumns == 4) 8.sp else 10.sp,
+                                            maxLines = 1
                                         )
                                     }
                                 } else {
@@ -772,7 +851,7 @@ fun MatchCardGameScreen(
                                         imageVector = Icons.Default.Psychology,
                                         contentDescription = "Hidden Card",
                                         tint = if (card.isHighlighted) Color(0xFFD97706) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                        modifier = Modifier.size(32.dp)
+                                        modifier = Modifier.size(if (gridColumns == 4) 24.dp else 30.dp)
                                     )
                                 }
                             }

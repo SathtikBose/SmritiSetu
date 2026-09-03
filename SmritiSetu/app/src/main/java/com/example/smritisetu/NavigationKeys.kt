@@ -22,6 +22,9 @@ data object EditProfileRoute : NavKey
 data object AppAppearanceRoute : NavKey
 
 @Serializable
+data object ShopRoute : NavKey
+
+@Serializable
 data object MatchCardLevelSelectRoute : NavKey
 
 @Serializable

@@ -51,7 +51,15 @@ fun MatchCardLevelSelectScreen(
     // Build 20 levels in blocks of 5
     val levelsList = remember(highestUnlockedLevel) {
         (1..20).map { level ->
-            val pairs = ((level - 1) % 5) + 2
+            val pairs = when (level) {
+                1 -> 2
+                2 -> 3
+                3 -> 4
+                4 -> 5
+                5 -> 6
+                6 -> 7
+                else -> 8
+            }
             val timeLimit = when {
                 level <= 5 -> 150 // Easy 150s
                 level <= 10 -> 100 // Normal 100s

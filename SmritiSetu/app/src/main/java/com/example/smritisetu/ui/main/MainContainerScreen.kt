@@ -41,6 +41,7 @@ fun MainContainerScreen(
     onNavigateToEditProfile: () -> Unit,
     onNavigateToAppearance: () -> Unit,
     onNavigateToLevelSelect: () -> Unit = {},
+    onNavigateToShop: () -> Unit = {},
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -62,7 +63,7 @@ fun MainContainerScreen(
                 .padding(bottom = 88.dp)
         ) {
             when (selectedTab) {
-                BottomNavTab.HOME -> HomeScreen()
+                BottomNavTab.HOME -> HomeScreen(onNavigateToShop = onNavigateToShop)
                 BottomNavTab.GAMES -> GamesScreen(
                     onPlayMatchCardGame = onNavigateToLevelSelect
                 )

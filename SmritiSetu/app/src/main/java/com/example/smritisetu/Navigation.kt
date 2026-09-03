@@ -14,6 +14,7 @@ import com.example.smritisetu.ui.games.MatchCardLevelSelectScreen
 import com.example.smritisetu.ui.main.MainContainerScreen
 import com.example.smritisetu.ui.settings.AppAppearanceScreen
 import com.example.smritisetu.ui.settings.EditProfileScreen
+import com.example.smritisetu.ui.shop.ShopScreen
 
 @Composable
 fun MainNavigation() {
@@ -57,6 +58,7 @@ fun MainNavigation() {
                         onNavigateToEditProfile = { backStack.add(EditProfileRoute) },
                         onNavigateToAppearance = { backStack.add(AppAppearanceRoute) },
                         onNavigateToLevelSelect = { backStack.add(MatchCardLevelSelectRoute) },
+                        onNavigateToShop = { backStack.add(ShopRoute) },
                         onLogout = {
                             backStack.clear()
                             backStack.add(LoginRoute)
@@ -73,6 +75,11 @@ fun MainNavigation() {
                         onNavigateBack = { backStack.removeLastOrNull() }
                     )
                 }
+                entry<ShopRoute> {
+                    ShopScreen(
+                        onNavigateBack = { backStack.removeLastOrNull() }
+                    )
+                }
                 entry<MatchCardLevelSelectRoute> {
                     MatchCardLevelSelectScreen(
                         onSelectLevel = { level ->
@@ -84,6 +91,7 @@ fun MainNavigation() {
                 entry<MatchCardGameRoute> { route ->
                     MatchCardGameScreen(
                         initialLevel = route.initialLevel,
+                        onNavigateToShop = { backStack.add(ShopRoute) },
                         onNavigateBack = { backStack.removeLastOrNull() }
                     )
                 }
