@@ -2,6 +2,7 @@ package com.example.smritisetu.data
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -22,6 +23,76 @@ class AuthManagerTest {
     fun defaultPerks_zero() {
         assertEquals(0, AuthManager.hintsCount.value)
         assertEquals(0, AuthManager.skipLevelCount.value)
+    }
+
+    @Test
+    fun signup_patientRole_generatesUniqueLinkCode() {
+        val result = AuthManager.signup("Biren Gogoi", "biren@smritisetu.org", "pass123", UserRole.PATIENT)
+        assertTrue(result.isSuccess)
+        val user = AuthManager.currentUser.value
+        assertNotNull(user)
+        assertEquals(UserRole.PATIENT, user?.role)
+        assertTrue(user?.patientLinkCode?.startsWith("SM-") == true)
+        assertEquals(UserRole.PATIENT, AuthManager.activeRoleView.value)
+    }
+
+    @Test
+    fun signup_caregiverRole_linksPatientCode() {
+        val result = AuthManager.signup(
+            name = "Rita Gogoi",
+            email = "rita@caregiver.org",
+            pass = "pass123",
+            role = UserRole.CAREGIVER,
+            patientCodeToLink = "SM-8492"
+        )
+        assertTrue(result.isSuccess)
+        val user = AuthManager.currentUser.value
+        assertNotNull(user)
+        assertEquals(UserRole.CAREGIVER, user?.role)
+        assertEquals("SM-8492", user?.linkedPatientCode)
+        assertEquals(UserRole.CAREGIVER, AuthManager.activeRoleView.value)
+    }
+
+    @Test
+    fun toggleActiveRoleView_switchesBetweenPatientAndCaregiver() {
+        AuthManager.setActiveRoleView(UserRole.PATIENT)
+        assertEquals(UserRole.PATIENT, AuthManager.activeRoleView.value)
+
+        AuthManager.toggleActiveRoleView()
+        assertEquals(UserRole.CAREGIVER, AuthManager.activeRoleView.value)
+
+        AuthManager.toggleActiveRoleView()
+        assertEquals(UserRole.PATIENT, AuthManager.activeRoleView.value)
+    }
+
+    @Test
+    fun linkPatientByCode_updatesLinkedPatientCode() {
+        AuthManager.login("caregiver@domain.com", "pass")
+        val result = AuthManager.linkPatientByCode("SM-9944")
+        assertTrue(result.isSuccess)
+        assertEquals("SM-9944", AuthManager.currentUser.value?.linkedPatientCode)
+
+        val invalidResult = AuthManager.linkPatientByCode(" ")
+        assertTrue(invalidResult.isFailure)
+    }
+
+    @Test
+    fun caregiverReminders_addToggleDelete() {
+        val initialCount = AuthManager.reminders.value.size
+        AuthManager.addReminder("Medicine", "09:00 AM", "Morning blood pressure pill")
+        assertEquals(initialCount + 1, AuthManager.reminders.value.size)
+
+        val added = AuthManager.reminders.value.last()
+        assertTrue(added.isActive)
+        assertEquals("09:00 AM", added.time)
+
+        // Toggle active status
+        AuthManager.toggleReminder(added.id)
+        assertFalse(AuthManager.reminders.value.first { it.id == added.id }.isActive)
+
+        // Delete reminder
+        AuthManager.deleteReminder(added.id)
+        assertEquals(initialCount, AuthManager.reminders.value.size)
     }
 
     @Test
@@ -87,17 +158,21 @@ class AuthManagerTest {
     }
 
     @Test
-    fun unlockNextLevel_progressiveUnlocking() {
-        // Complete level 5 -> unlocks level 6
-        AuthManager.unlockNextLevel(5)
-        assertEquals(6, AuthManager.highestUnlockedLevel.value)
-        assertTrue(AuthManager.isLevelUnlocked(6))
-        assertFalse(AuthManager.isLevelUnlocked(7))
+    fun endlessProgression_unlocksInfinitelyBeyondLevel20() {
+        // Unlock Level 20
+        AuthManager.unlockNextLevel(19)
+        assertEquals(20, AuthManager.highestUnlockedLevel.value)
 
-        // Complete level 6 -> unlocks level 7
-        AuthManager.unlockNextLevel(6)
-        assertEquals(7, AuthManager.highestUnlockedLevel.value)
-        assertTrue(AuthManager.isLevelUnlocked(7))
+        // Complete Level 20 -> Unlocks Level 21
+        AuthManager.unlockNextLevel(20)
+        assertEquals(21, AuthManager.highestUnlockedLevel.value)
+        assertTrue(AuthManager.isLevelUnlocked(21))
+
+        // Complete Level 99 -> Unlocks Level 100
+        AuthManager.unlockNextLevel(99)
+        assertEquals(100, AuthManager.highestUnlockedLevel.value)
+        assertTrue(AuthManager.isLevelUnlocked(100))
+        assertFalse(AuthManager.isLevelUnlocked(101))
     }
 
     @Test
@@ -106,14 +181,6 @@ class AuthManagerTest {
         assertTrue(result.isSuccess)
         assertTrue(AuthManager.isLoggedIn.value)
         assertEquals("test@smritisetu.org", AuthManager.currentUser.value?.email)
-    }
-
-    @Test
-    fun signup_success_createsAccount() {
-        val result = AuthManager.signup("Biren Gogoi", "biren@smritisetu.org", "password123")
-        assertTrue(result.isSuccess)
-        assertTrue(AuthManager.isLoggedIn.value)
-        assertEquals("Biren Gogoi", AuthManager.currentUser.value?.name)
     }
 
     @Test
@@ -143,6 +210,7 @@ class AuthManagerTest {
             totalCards = 4,
             timeElapsedMs = 5200L,
             hintsUsed = 0,
+            perkHintsUsed = 0,
             difficulty = "NORMAL"
         )
         AuthManager.recordGameTelemetry(log)

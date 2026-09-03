@@ -9,6 +9,7 @@ import androidx.navigation3.ui.NavDisplay
 import com.example.smritisetu.ui.auth.ForgotPasswordScreen
 import com.example.smritisetu.ui.auth.LoginScreen
 import com.example.smritisetu.ui.auth.SignupScreen
+import com.example.smritisetu.ui.caregiver.CaregiverDashboardScreen
 import com.example.smritisetu.ui.games.MatchCardGameScreen
 import com.example.smritisetu.ui.games.MatchCardLevelSelectScreen
 import com.example.smritisetu.ui.main.MainContainerScreen
@@ -59,10 +60,16 @@ fun MainNavigation() {
                         onNavigateToAppearance = { backStack.add(AppAppearanceRoute) },
                         onNavigateToLevelSelect = { backStack.add(MatchCardLevelSelectRoute) },
                         onNavigateToShop = { backStack.add(ShopRoute) },
+                        onNavigateToCaregiverDashboard = { backStack.add(CaregiverDashboardRoute) },
                         onLogout = {
                             backStack.clear()
                             backStack.add(LoginRoute)
                         }
+                    )
+                }
+                entry<CaregiverDashboardRoute> {
+                    CaregiverDashboardScreen(
+                        onSwitchToPatientMode = { backStack.removeLastOrNull() }
                     )
                 }
                 entry<EditProfileRoute> {

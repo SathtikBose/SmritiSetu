@@ -25,6 +25,9 @@ data object AppAppearanceRoute : NavKey
 data object ShopRoute : NavKey
 
 @Serializable
+data object CaregiverDashboardRoute : NavKey
+
+@Serializable
 data object MatchCardLevelSelectRoute : NavKey
 
 @Serializable

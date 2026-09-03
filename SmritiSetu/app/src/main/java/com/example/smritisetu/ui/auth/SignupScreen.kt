@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smritisetu.data.AuthManager
+import com.example.smritisetu.data.LocalAppStrings
 import com.example.smritisetu.data.UserRole
 
 @Composable
@@ -34,12 +35,14 @@ fun SignupScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    var selectedRole by remember { mutableStateOf(UserRole.CAREGIVER) }
+    var selectedRole by remember { mutableStateOf(UserRole.PATIENT) }
+    var patientCodeToLink by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+    val strings = LocalAppStrings.current
 
     val scrollState = rememberScrollState()
 
@@ -51,7 +54,7 @@ fun SignupScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
-                .padding(horizontal = 24.dp, vertical = 32.dp),
+                .padding(horizontal = 24.dp, vertical = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -63,20 +66,20 @@ fun SignupScreen(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Join SmritiSetu to begin assisted care & gaming",
+                text = "Join SmritiSetu to begin assisted care & cognitive gaming",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 ),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(18.dp)
             ) {
                 Column(
                     modifier = Modifier
@@ -101,6 +104,73 @@ fun SignupScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                     }
 
+                    // Role Selection
+                    Text(
+                        text = strings.selectYourRole,
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 6.dp)
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        FilterChip(
+                            selected = selectedRole == UserRole.PATIENT,
+                            onClick = { selectedRole = UserRole.PATIENT },
+                            label = { Text(strings.rolePatient, fontWeight = FontWeight.SemiBold) },
+                            leadingIcon = if (selectedRole == UserRole.PATIENT) {
+                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                            } else null,
+                            modifier = Modifier.weight(1f)
+                        )
+                        FilterChip(
+                            selected = selectedRole == UserRole.CAREGIVER,
+                            onClick = { selectedRole = UserRole.CAREGIVER },
+                            label = { Text(strings.roleCaregiver, fontWeight = FontWeight.SemiBold) },
+                            leadingIcon = if (selectedRole == UserRole.CAREGIVER) {
+                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                            } else null,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    if (selectedRole == UserRole.PATIENT) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "A unique 6-digit Patient ID (e.g. SM-8492) will be assigned for your caregiver to connect.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        // Optional Patient Link Code Input for Caregiver
+                        OutlinedTextField(
+                            value = patientCodeToLink,
+                            onValueChange = {
+                                patientCodeToLink = it
+                                errorMessage = null
+                            },
+                            label = { Text(strings.patientLinkCode) },
+                            placeholder = { Text("e.g. SM-8492") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.VpnKey,
+                                    contentDescription = "Key Icon"
+                                )
+                            },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
                     // Name
                     OutlinedTextField(
                         value = name,
@@ -108,8 +178,8 @@ fun SignupScreen(
                             name = it
                             errorMessage = null
                         },
-                        label = { Text("Full Name") },
-                        placeholder = { Text("Ananya Sharma") },
+                        label = { Text(strings.fullName) },
+                        placeholder = { Text("Dr. Ananya Sharma") },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Person,
@@ -131,7 +201,7 @@ fun SignupScreen(
                             email = it
                             errorMessage = null
                         },
-                        label = { Text("Email Address") },
+                        label = { Text(strings.email) },
                         placeholder = { Text("example@domain.com") },
                         leadingIcon = {
                             Icon(
@@ -150,41 +220,6 @@ fun SignupScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Role Selection
-                    Text(
-                        text = "I am a:",
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 6.dp)
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        FilterChip(
-                            selected = selectedRole == UserRole.CAREGIVER,
-                            onClick = { selectedRole = UserRole.CAREGIVER },
-                            label = { Text("Caregiver / Family") },
-                            leadingIcon = if (selectedRole == UserRole.CAREGIVER) {
-                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                            } else null,
-                            modifier = Modifier.weight(1f)
-                        )
-                        FilterChip(
-                            selected = selectedRole == UserRole.PATIENT,
-                            onClick = { selectedRole = UserRole.PATIENT },
-                            label = { Text("Patient / Elder") },
-                            leadingIcon = if (selectedRole == UserRole.PATIENT) {
-                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-                            } else null,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
                     // Password
                     OutlinedTextField(
                         value = password,
@@ -192,7 +227,7 @@ fun SignupScreen(
                             password = it
                             errorMessage = null
                         },
-                        label = { Text("Password") },
+                        label = { Text(strings.password) },
                         placeholder = { Text("••••••••") },
                         leadingIcon = {
                             Icon(
@@ -272,7 +307,13 @@ fun SignupScreen(
                                 return@Button
                             }
                             isLoading = true
-                            val result = AuthManager.signup(name.trim(), email.trim(), password, selectedRole)
+                            val result = AuthManager.signup(
+                                name = name.trim(),
+                                email = email.trim(),
+                                pass = password,
+                                role = selectedRole,
+                                patientCodeToLink = if (selectedRole == UserRole.CAREGIVER) patientCodeToLink.ifBlank { "SM-8492" } else null
+                            )
                             isLoading = false
                             if (result.isSuccess) {
                                 onSignupSuccess()
@@ -294,7 +335,7 @@ fun SignupScreen(
                             )
                         } else {
                             Text(
-                                text = "Sign Up",
+                                text = strings.signup,
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                             )
                         }
@@ -362,7 +403,7 @@ fun SignupScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Log In",
+                    text = strings.login,
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.clickable { onNavigateToLogin() }
