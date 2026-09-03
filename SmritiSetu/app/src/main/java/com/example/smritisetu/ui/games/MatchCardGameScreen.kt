@@ -35,6 +35,7 @@ import com.example.smritisetu.data.LocalAppStrings
 import com.example.smritisetu.theme.GlassCard
 import com.example.smritisetu.theme.getGlassGradientBrush
 import com.example.smritisetu.theme.isAppInDarkTheme
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -132,6 +133,15 @@ fun MatchCardGameScreen(
         }
     }
 
+    // Cognitive Memory Exposure Time for the First Clicked Card (Adjusted by Difficulty)
+    fun getFirstCardExposureMs(level: Int): Long {
+        return when {
+            level <= 5 -> 4500L // Easy (150s total): 4.5 seconds to observe and memorize
+            level <= 10 -> 3000L // Normal (100s total): 3.0 seconds
+            else -> 1800L // Hard (50s total): 1.8 seconds (requires prompt memory recall)
+        }
+    }
+
     // Time remaining state
     var timeRemainingSeconds by remember(currentLevel) { mutableIntStateOf(getTimeLimitForLevel(currentLevel)) }
 
@@ -149,16 +159,18 @@ fun MatchCardGameScreen(
         mutableStateOf(cardList.toList())
     }
 
-    // Selected cards for matching
+    // Selected cards for matching & auto-flip coroutine job
     var firstSelectedCard by remember { mutableStateOf<CardItem?>(null) }
     var secondSelectedCard by remember { mutableStateOf<CardItem?>(null) }
     var isProcessingMatch by remember { mutableStateOf(false) }
+    var autoFlipBackJob by remember { mutableStateOf<Job?>(null) }
 
     // Inactivity timer state
     var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
     // Reset state on level change
     fun resetCurrentLevel() {
+        autoFlipBackJob?.cancel()
         triesCount = 0
         hintsTriggeredCount = 0
         levelStartTime = System.currentTimeMillis()
@@ -288,7 +300,21 @@ fun MatchCardGameScreen(
 
         if (firstSelectedCard == null) {
             firstSelectedCard = card
+            autoFlipBackJob?.cancel()
+            val exposureMs = getFirstCardExposureMs(currentLevel)
+            autoFlipBackJob = scope.launch {
+                delay(exposureMs)
+                // If user hasn't clicked a 2nd card during exposure window, flip 1st card back to challenge memory!
+                if (firstSelectedCard?.id == card.id && secondSelectedCard == null && !isProcessingMatch) {
+                    cards = cards.map {
+                        if (it.id == card.id && !it.isMatched) it.copy(isFlipped = false) else it
+                    }
+                    firstSelectedCard = null
+                }
+            }
         } else if (secondSelectedCard == null && card.id != firstSelectedCard?.id) {
+            // Cancel auto-flip job since user tapped the 2nd card
+            autoFlipBackJob?.cancel()
             secondSelectedCard = card
             triesCount++
             isProcessingMatch = true
