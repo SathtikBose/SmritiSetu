@@ -23,7 +23,6 @@ import com.example.smritisetu.data.LocalAppStrings
 import com.example.smritisetu.theme.GlassCard
 import com.example.smritisetu.theme.getGlassGradientBrush
 import com.example.smritisetu.theme.isAppInDarkTheme
-import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,7 +31,6 @@ fun AppAppearanceScreen(
     modifier: Modifier = Modifier
 ) {
     val themeMode by AuthManager.themeMode.collectAsState()
-    val fontScale by AuthManager.fontScale.collectAsState()
     val darkTheme = isAppInDarkTheme(themeMode)
     val strings = LocalAppStrings.current
 
@@ -118,81 +116,6 @@ fun AppAppearanceScreen(
                             isSelected = themeMode == AppThemeMode.HIGH_CONTRAST,
                             onClick = { AuthManager.setThemeMode(AppThemeMode.HIGH_CONTRAST) }
                         )
-                    }
-                }
-
-                // Font Size Section
-                Text(
-                    text = strings.fontSize,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-
-                GlassCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    darkTheme = darkTheme
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "${(fontScale * 100).roundToInt()}%",
-                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("A", fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                            Slider(
-                                value = fontScale,
-                                onValueChange = { AuthManager.setFontScale(it) },
-                                valueRange = 0.85f..1.35f,
-                                steps = 3,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(horizontal = 8.dp)
-                            )
-                            Text("A", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                        }
-
-                        // Presets
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            FilterChip(
-                                selected = (fontScale - 1.0f) in -0.05f..0.05f,
-                                onClick = { AuthManager.setFontScale(1.0f) },
-                                label = { Text("100%") },
-                                modifier = Modifier.weight(1f)
-                            )
-                            FilterChip(
-                                selected = (fontScale - 1.15f) in -0.05f..0.05f,
-                                onClick = { AuthManager.setFontScale(1.15f) },
-                                label = { Text("115%") },
-                                modifier = Modifier.weight(1f)
-                            )
-                            FilterChip(
-                                selected = (fontScale - 1.30f) in -0.05f..0.05f,
-                                onClick = { AuthManager.setFontScale(1.30f) },
-                                label = { Text("130%") },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
                     }
                 }
             }
