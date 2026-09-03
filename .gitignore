@@ -59,4 +59,11 @@ yarn-error.*
 .vscode
 .idea/
 
-
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+.pytest_cache/
