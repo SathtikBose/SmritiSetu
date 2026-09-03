@@ -53,9 +53,9 @@ fun MatchCardLevelSelectScreen(
         (1..20).map { level ->
             val pairs = ((level - 1) % 5) + 2
             val timeLimit = when {
-                level <= 5 -> 65 - (level * 5) // 60s down to 40s
-                level <= 10 -> 50 - ((level - 5) * 3) // 47s down to 35s
-                else -> 40 - ((level - 10) * 2).coerceAtMost(20) // 38s down to 20s
+                level <= 5 -> 150 // Easy 150s
+                level <= 10 -> 100 // Normal 100s
+                else -> 50 // Hard 50s
             }
             val difficulty = when {
                 level <= 5 -> strings.difficultyEasy

@@ -67,6 +67,8 @@ fun MatchCardGameScreen(
 ) {
     val themeMode by AuthManager.themeMode.collectAsState()
     val currentUser by AuthManager.currentUser.collectAsState()
+    val hintsCount by AuthManager.hintsCount.collectAsState()
+    val skipLevelCount by AuthManager.skipLevelCount.collectAsState()
     val darkTheme = isAppInDarkTheme(themeMode)
     val strings = LocalAppStrings.current
 
@@ -78,6 +80,7 @@ fun MatchCardGameScreen(
     var showTimesUpDialog by remember { mutableStateOf(false) }
     var levelTimeElapsedSeconds by remember { mutableLongStateOf(0L) }
 
+    val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
     // Determine difficulty parameters per level
@@ -86,11 +89,12 @@ fun MatchCardGameScreen(
         return basePairs.coerceIn(2, culturalSymbols.size)
     }
 
+    // Timers: Easy = 150s, Normal = 100s, Hard = 50s
     fun getTimeLimitForLevel(level: Int): Int {
         return when {
-            level <= 5 -> (65 - (level * 5)).coerceAtLeast(35) // 60s down to 40s
-            level <= 10 -> (50 - ((level - 5) * 3)).coerceAtLeast(30) // 47s down to 35s
-            else -> (40 - ((level - 10) * 2)).coerceAtLeast(20) // 38s down to 20s
+            level <= 5 -> 150 // Easy 150s
+            level <= 10 -> 100 // Normal 100s
+            else -> 50 // Hard 50s
         }
     }
 
@@ -111,8 +115,7 @@ fun MatchCardGameScreen(
     }
 
     // Time remaining state
-    val totalTimeLimit = remember(currentLevel) { getTimeLimitForLevel(currentLevel) }
-    var timeRemainingSeconds by remember(currentLevel) { mutableIntStateOf(totalTimeLimit) }
+    var timeRemainingSeconds by remember(currentLevel) { mutableIntStateOf(getTimeLimitForLevel(currentLevel)) }
 
     // Generate cards for current level
     var cards by remember(currentLevel) {
@@ -212,6 +215,46 @@ fun MatchCardGameScreen(
         label = "hintPulseScale"
     )
 
+    // Handle Hint Perk Trigger
+    fun triggerHintPerk() {
+        if (hintsCount > 0) {
+            val used = AuthManager.useHint()
+            if (used) {
+                val unmatched = cards.filter { !it.isMatched }
+                if (unmatched.isNotEmpty()) {
+                    val targetPairId = unmatched.first().pairId
+                    cards = cards.map {
+                        if (it.pairId == targetPairId) it.copy(isHighlighted = true) else it.copy(isHighlighted = false)
+                    }
+                    scope.launch { snackbarHostState.showSnackbar(strings.hintActive) }
+                }
+            }
+        } else {
+            scope.launch { snackbarHostState.showSnackbar(strings.noHintsLeft) }
+        }
+    }
+
+    // Handle Skip Level Perk Trigger
+    fun triggerSkipLevelPerk() {
+        if (skipLevelCount > 0) {
+            val used = AuthManager.useSkipLevel()
+            if (used) {
+                val timeElapsedMs = System.currentTimeMillis() - levelStartTime
+                levelTimeElapsedSeconds = timeElapsedMs / 1000
+
+                // Mark all cards as matched
+                cards = cards.map { it.copy(isMatched = true, isFlipped = true) }
+
+                AuthManager.addRewards(xp = 15, coins = 200)
+                AuthManager.unlockNextLevel(currentLevel)
+
+                showVictoryDialog = true
+            }
+        } else {
+            scope.launch { snackbarHostState.showSnackbar(strings.noSkipsLeft) }
+        }
+    }
+
     // Handle Card Click
     fun onCardClick(card: CardItem) {
         if (isProcessingMatch || card.isFlipped || card.isMatched || showTimesUpDialog || showVictoryDialog) return
@@ -275,7 +318,7 @@ fun MatchCardGameScreen(
         }
     }
 
-    // Time's Up Dialog
+    // Time's Up Dialog (User must replay level)
     if (showTimesUpDialog) {
         AlertDialog(
             onDismissRequest = { },
@@ -317,7 +360,7 @@ fun MatchCardGameScreen(
                 ) {
                     Icon(Icons.Default.Refresh, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(strings.tryAgain, fontWeight = FontWeight.Bold)
+                    Text(strings.replayGame, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -463,6 +506,7 @@ fun MatchCardGameScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -520,6 +564,68 @@ fun MatchCardGameScreen(
                 }
             )
         },
+        bottomBar = {
+            // In-Game Bottom Perks Bar
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                shape = RoundedCornerShape(22.dp),
+                color = if (darkTheme) Color(0xEB162421) else Color(0xEBFFFFFF),
+                border = BorderStroke(1.dp, if (darkTheme) Color(0x33FFFFFF) else Color(0x66FFFFFF)),
+                shadowElevation = 8.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Hint Perk Button
+                    OutlinedButton(
+                        onClick = { triggerHintPerk() },
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f),
+                        border = BorderStroke(1.2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lightbulb,
+                            contentDescription = strings.useHint,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "${strings.useHint} ($hintsCount)",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    // Skip Level Perk Button
+                    OutlinedButton(
+                        onClick = { triggerSkipLevelPerk() },
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f),
+                        border = BorderStroke(1.2.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FastForward,
+                            contentDescription = strings.useSkip,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "${strings.useSkip} ($skipLevelCount)",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            }
+        },
         modifier = modifier.fillMaxSize()
     ) { paddingValues ->
         Box(
@@ -531,7 +637,7 @@ fun MatchCardGameScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 18.dp, vertical = 12.dp),
+                    .padding(horizontal = 18.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Info Bar: Live Timer + Tries Counter + Difficulty
@@ -543,23 +649,23 @@ fun MatchCardGameScreen(
                     // Live Countdown Timer
                     Surface(
                         shape = RoundedCornerShape(10.dp),
-                        color = if (timeRemainingSeconds <= 10) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                        color = if (timeRemainingSeconds <= 15) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Timer,
                                 contentDescription = "Timer",
-                                tint = if (timeRemainingSeconds <= 10) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                tint = if (timeRemainingSeconds <= 15) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = "${timeRemainingSeconds}s",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                color = if (timeRemainingSeconds <= 10) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                                color = if (timeRemainingSeconds <= 15) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
@@ -573,7 +679,7 @@ fun MatchCardGameScreen(
                             text = "${strings.tries}: $triesCount",
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         )
                     }
                 }
@@ -582,7 +688,7 @@ fun MatchCardGameScreen(
                     Spacer(modifier = Modifier.height(6.dp))
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f)
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f)
                     ) {
                         Text(
                             text = strings.hintActive,
@@ -593,7 +699,7 @@ fun MatchCardGameScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 // Card Grid (2 to 3 columns depending on card count)
                 val gridColumns = if (cards.size <= 6) 2 else 3
@@ -605,7 +711,7 @@ fun MatchCardGameScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    contentPadding = PaddingValues(bottom = 16.dp)
+                    contentPadding = PaddingValues(bottom = 12.dp)
                 ) {
                     items(cards, key = { it.id }) { card ->
                         val isRevealed = card.isFlipped || card.isMatched
@@ -662,7 +768,6 @@ fun MatchCardGameScreen(
                                         )
                                     }
                                 } else {
-                                    // Hidden card back (Serene Lotus / Smriti symbol)
                                     Icon(
                                         imageVector = Icons.Default.Psychology,
                                         contentDescription = "Hidden Card",

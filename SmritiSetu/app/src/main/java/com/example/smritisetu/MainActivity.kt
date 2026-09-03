@@ -17,6 +17,8 @@ class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
+    AuthManager.initStorage(applicationContext)
+
     enableEdgeToEdge()
     setContent {
       val themeMode by AuthManager.themeMode.collectAsState()
