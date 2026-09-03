@@ -142,6 +142,19 @@ fun MatchCardGameScreen(
         }
     }
 
+    // Initial Full-Board Memorization Preview Time (Adjusted by Difficulty)
+    fun getInitialPreviewDurationMs(level: Int): Long {
+        return when {
+            level <= 5 -> 5000L // Easy (Levels 1-5): 5.0 seconds preview to memorize
+            level <= 10 -> 3500L // Normal (Levels 6-10): 3.5 seconds preview
+            else -> 2000L // Hard (Levels 11+): 2.0 seconds preview
+        }
+    }
+
+    // Initial Preview State
+    var isInitialPreview by remember(currentLevel) { mutableStateOf(true) }
+    var previewRemainingSeconds by remember(currentLevel) { mutableIntStateOf(5) }
+
     // Time remaining state
     var timeRemainingSeconds by remember(currentLevel) { mutableIntStateOf(getTimeLimitForLevel(currentLevel)) }
 
@@ -152,8 +165,8 @@ fun MatchCardGameScreen(
         val cardList = mutableListOf<CardItem>()
         var cardId = 0
         selectedSymbols.forEachIndexed { pairIndex, (icon, label) ->
-            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = icon, label = label))
-            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = icon, label = label))
+            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = icon, label = label, isFlipped = true))
+            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = icon, label = label, isFlipped = true))
         }
         cardList.shuffle()
         mutableStateOf(cardList.toList())
@@ -171,6 +184,9 @@ fun MatchCardGameScreen(
     // Reset state on level change
     fun resetCurrentLevel() {
         autoFlipBackJob?.cancel()
+        val initialPreviewMs = getInitialPreviewDurationMs(currentLevel)
+        isInitialPreview = true
+        previewRemainingSeconds = (initialPreviewMs / 1000).toInt().coerceAtLeast(1)
         triesCount = 0
         hintsTriggeredCount = 0
         levelStartTime = System.currentTimeMillis()
@@ -188,8 +204,8 @@ fun MatchCardGameScreen(
         val cardList = mutableListOf<CardItem>()
         var cardId = 0
         selectedSymbols.forEachIndexed { pairIndex, (icon, label) ->
-            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = icon, label = label))
-            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = icon, label = label))
+            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = icon, label = label, isFlipped = true))
+            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = icon, label = label, isFlipped = true))
         }
         cardList.shuffle()
         cards = cardList.toList()
@@ -199,12 +215,32 @@ fun MatchCardGameScreen(
         resetCurrentLevel()
     }
 
-    // Live Countdown Timer Coroutine
-    LaunchedEffect(currentLevel, showVictoryDialog, showTimesUpDialog) {
-        if (!showVictoryDialog && !showTimesUpDialog) {
+    // Initial Full-Board Preview Countdown Coroutine
+    LaunchedEffect(currentLevel, isInitialPreview) {
+        if (isInitialPreview) {
+            val previewDurationMs = getInitialPreviewDurationMs(currentLevel)
+            var remaining = (previewDurationMs / 1000).toInt().coerceAtLeast(1)
+            while (remaining > 0 && isInitialPreview) {
+                previewRemainingSeconds = remaining
+                delay(1000L)
+                remaining--
+            }
+            if (isInitialPreview) {
+                // After preview expires, flip all cards face down so gameplay begins!
+                cards = cards.map { if (!it.isMatched) it.copy(isFlipped = false) else it }
+                isInitialPreview = false
+                levelStartTime = System.currentTimeMillis()
+                lastInteractionTime = System.currentTimeMillis()
+            }
+        }
+    }
+
+    // Live Countdown Timer Coroutine (Runs after initial preview completes)
+    LaunchedEffect(currentLevel, showVictoryDialog, showTimesUpDialog, isInitialPreview) {
+        if (!showVictoryDialog && !showTimesUpDialog && !isInitialPreview) {
             while (timeRemainingSeconds > 0) {
                 delay(1000L)
-                if (!showVictoryDialog && !showTimesUpDialog) {
+                if (!showVictoryDialog && !showTimesUpDialog && !isInitialPreview) {
                     timeRemainingSeconds--
                     if (timeRemainingSeconds <= 0) {
                         showTimesUpDialog = true
@@ -288,7 +324,7 @@ fun MatchCardGameScreen(
 
     // Handle Card Click
     fun onCardClick(card: CardItem) {
-        if (isProcessingMatch || card.isFlipped || card.isMatched || showTimesUpDialog || showVictoryDialog) return
+        if (isInitialPreview || isProcessingMatch || card.isFlipped || card.isMatched || showTimesUpDialog || showVictoryDialog) return
 
         lastInteractionTime = System.currentTimeMillis()
 
@@ -785,7 +821,32 @@ fun MatchCardGameScreen(
                     }
                 }
 
-                if (cards.any { it.isHighlighted }) {
+                if (isInitialPreview) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Visibility,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Memorize All Cards: ${previewRemainingSeconds}s",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                } else if (cards.any { it.isHighlighted }) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Surface(
                         shape = RoundedCornerShape(8.dp),
