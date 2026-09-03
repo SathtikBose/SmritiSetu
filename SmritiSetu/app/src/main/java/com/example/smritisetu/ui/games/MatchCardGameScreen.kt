@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -792,72 +793,107 @@ fun MatchCardGameScreen(
                     contentPadding = PaddingValues(bottom = 12.dp)
                 ) {
                     items(cards, key = { it.id }) { card ->
-                        val isRevealed = card.isFlipped || card.isMatched
-                        val cardScale = if (card.isHighlighted) hintPulseScale else 1.0f
-
-                        val borderStroke = when {
-                            card.isHighlighted -> BorderStroke(2.5.dp, Color(0xFFF59E0B))
-                            card.isMatched -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
-                            else -> BorderStroke(1.dp, if (darkTheme) Color(0x33FFFFFF) else Color(0x66FFFFFF))
-                        }
-
-                        val cardBgColor = when {
-                            card.isMatched -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f)
-                            isRevealed -> if (darkTheme) Color(0xEB1E332E) else Color(0xF5FFFFFF)
-                            card.isHighlighted -> Color(0xFFFEF3C7)
-                            else -> if (darkTheme) Color(0xCC1A2B27) else Color(0xE6FFFFFF)
-                        }
-
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(1.0f)
-                                .scale(cardScale)
-                                .clickable(enabled = !isRevealed && !isProcessingMatch) {
-                                    onCardClick(card)
-                                },
-                            shape = RoundedCornerShape(16.dp),
-                            color = cardBgColor,
-                            border = borderStroke,
-                            shadowElevation = if (card.isHighlighted) 8.dp else 3.dp
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier.fillMaxSize().padding(6.dp)
-                            ) {
-                                if (isRevealed) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = card.icon,
-                                            contentDescription = card.label,
-                                            tint = if (card.isMatched) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                                            modifier = Modifier.size(if (gridColumns == 4) 26.dp else 34.dp)
-                                        )
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        Text(
-                                            text = card.label,
-                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            textAlign = TextAlign.Center,
-                                            fontSize = if (gridColumns == 4) 8.sp else 10.sp,
-                                            maxLines = 1
-                                        )
-                                    }
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Default.Psychology,
-                                        contentDescription = "Hidden Card",
-                                        tint = if (card.isHighlighted) Color(0xFFD97706) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                        modifier = Modifier.size(if (gridColumns == 4) 24.dp else 30.dp)
-                                    )
-                                }
-                            }
-                        }
+                        FlippableCardTile(
+                            card = card,
+                            isProcessingMatch = isProcessingMatch,
+                            hintPulseScale = hintPulseScale,
+                            gridColumns = gridColumns,
+                            darkTheme = darkTheme,
+                            onClick = { onCardClick(card) }
+                        )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun FlippableCardTile(
+    card: CardItem,
+    isProcessingMatch: Boolean,
+    hintPulseScale: Float,
+    gridColumns: Int,
+    darkTheme: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isRevealed = card.isFlipped || card.isMatched
+
+    // Animate rotation from 0f (back) to 180f (front)
+    val rotation by animateFloatAsState(
+        targetValue = if (isRevealed) 180f else 0f,
+        animationSpec = tween(durationMillis = 380, easing = FastOutSlowInEasing),
+        label = "cardFlipAnimation"
+    )
+
+    val cardScale = if (card.isHighlighted) hintPulseScale else 1.0f
+
+    val borderStroke = when {
+        card.isHighlighted -> BorderStroke(2.5.dp, Color(0xFFF59E0B))
+        card.isMatched -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
+        else -> BorderStroke(1.dp, if (darkTheme) Color(0x33FFFFFF) else Color(0x66FFFFFF))
+    }
+
+    val cardBgColor = when {
+        card.isMatched -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f)
+        rotation > 90f -> if (darkTheme) Color(0xEB1E332E) else Color(0xF5FFFFFF)
+        card.isHighlighted -> Color(0xFFFEF3C7)
+        else -> if (darkTheme) Color(0xCC1A2B27) else Color(0xE6FFFFFF)
+    }
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .aspectRatio(1.0f)
+            .scale(cardScale)
+            .graphicsLayer {
+                rotationY = rotation
+                cameraDistance = 14f * density
+            }
+            .clickable(enabled = !isRevealed && !isProcessingMatch) {
+                onClick()
+            },
+        shape = RoundedCornerShape(16.dp),
+        color = cardBgColor,
+        border = borderStroke,
+        shadowElevation = if (card.isHighlighted) 8.dp else 3.dp
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.fillMaxSize().padding(6.dp)
+        ) {
+            if (rotation > 90f) {
+                // Front Face (Counter-rotated by 180deg so content isn't mirrored horizontally)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.graphicsLayer { rotationY = 180f }
+                ) {
+                    Icon(
+                        imageVector = card.icon,
+                        contentDescription = card.label,
+                        tint = if (card.isMatched) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(if (gridColumns == 4) 26.dp else 34.dp)
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = card.label,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center,
+                        fontSize = if (gridColumns == 4) 8.sp else 10.sp,
+                        maxLines = 1
+                    )
+                }
+            } else {
+                // Back Face (Pattern / Icon)
+                Icon(
+                    imageVector = Icons.Default.Psychology,
+                    contentDescription = "Hidden Card",
+                    tint = if (card.isHighlighted) Color(0xFFD97706) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                    modifier = Modifier.size(if (gridColumns == 4) 24.dp else 30.dp)
+                )
             }
         }
     }

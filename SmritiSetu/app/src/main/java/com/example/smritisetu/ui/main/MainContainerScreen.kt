@@ -42,6 +42,7 @@ fun MainContainerScreen(
     onNavigateToAppearance: () -> Unit,
     onNavigateToLevelSelect: () -> Unit = {},
     onNavigateToShop: () -> Unit = {},
+    onNavigateToCaregiverDashboard: () -> Unit = {},
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -71,6 +72,7 @@ fun MainContainerScreen(
                 BottomNavTab.SETTINGS -> SettingsScreen(
                     onNavigateToEditProfile = onNavigateToEditProfile,
                     onNavigateToAppearance = onNavigateToAppearance,
+                    onNavigateToCaregiverDashboard = onNavigateToCaregiverDashboard,
                     onLogout = onLogout
                 )
             }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
@@ -19,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smritisetu.data.AuthManager
@@ -48,9 +50,13 @@ fun MatchCardLevelSelectScreen(
     val darkTheme = isAppInDarkTheme(themeMode)
     val strings = LocalAppStrings.current
 
-    // Build 20 levels in blocks of 5
-    val levelsList = remember(highestUnlockedLevel) {
-        (1..20).map { level ->
+    // Dynamically generated endless procedural levels (Candy Crush style)
+    var displayedMaxLevel by remember(highestUnlockedLevel) {
+        mutableIntStateOf((highestUnlockedLevel + 5).coerceAtLeast(10))
+    }
+
+    val levelsList = remember(highestUnlockedLevel, displayedMaxLevel) {
+        (1..displayedMaxLevel).map { level ->
             val pairs = when (level) {
                 1 -> 2
                 2 -> 3
@@ -58,7 +64,7 @@ fun MatchCardLevelSelectScreen(
                 4 -> 5
                 5 -> 6
                 6 -> 7
-                else -> 8
+                else -> 8 // Capped at 8 pairs (16 cards) for elder-friendly touch targets
             }
             val timeLimit = when {
                 level <= 5 -> 150 // Easy 150s
@@ -138,135 +144,147 @@ fun MatchCardLevelSelectScreen(
                 .padding(paddingValues)
                 .background(getGlassGradientBrush(darkTheme))
         ) {
-            Column(
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 18.dp)
+                    .padding(horizontal = 18.dp),
+                contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
             ) {
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Subtitle / Unlocking Guide Banner
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                // Header Banner
+                item(span = { GridItemSpan(2) }) {
+                    GlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(24.dp),
+                        darkTheme = darkTheme
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = strings.chooseLevelSubtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(18.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AllInclusive,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Endless Cognitive Levels",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = strings.chooseLevelSubtitle,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                // Level Tiles
+                items(levelsList, key = { it.levelNumber }) { item ->
+                    val isUnlocked = item.isUnlocked
+                    val isCurrentTarget = item.levelNumber == highestUnlockedLevel
+                    val totalCards = item.pairsCount * 2
 
-                // Levels Grid
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 24.dp)
-                ) {
-                    items(levelsList, key = { it.levelNumber }) { item ->
-                        val isUnlocked = item.isUnlocked
-                        val totalCards = item.pairsCount * 2
+                    val borderColor = when {
+                        isCurrentTarget -> MaterialTheme.colorScheme.primary
+                        isUnlocked -> if (darkTheme) Color(0x44FFFFFF) else Color(0x66FFFFFF)
+                        else -> if (darkTheme) Color(0x1AFFFFFF) else Color(0x33000000)
+                    }
 
-                        val cardBgColor = when {
-                            !isUnlocked -> if (darkTheme) Color(0x6616221F) else Color(0x66E5E7EB)
-                            item.levelNumber < highestUnlockedLevel -> if (darkTheme) Color(0xD91E332E) else Color(0xF2FFFFFF)
-                            else -> if (darkTheme) Color(0xEB233E38) else Color(0xFFFFFFFF)
-                        }
+                    val cardBgColor = when {
+                        isCurrentTarget -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                        isUnlocked -> if (darkTheme) Color(0xCC1A2B27) else Color(0xEBFFFFFF)
+                        else -> if (darkTheme) Color(0x66121C1A) else Color(0x99F1F5F9)
+                    }
 
-                        val borderColor = when {
-                            !isUnlocked -> if (darkTheme) Color(0x22FFFFFF) else Color(0x339CA3AF)
-                            item.levelNumber == highestUnlockedLevel -> MaterialTheme.colorScheme.primary
-                            else -> if (darkTheme) Color(0x44FFFFFF) else Color(0x66FFFFFF)
-                        }
-
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(enabled = isUnlocked) {
-                                    onSelectLevel(item.levelNumber)
-                                },
-                            shape = RoundedCornerShape(22.dp),
-                            color = cardBgColor,
-                            border = BorderStroke(if (item.levelNumber == highestUnlockedLevel) 2.dp else 1.dp, borderColor),
-                            shadowElevation = if (isUnlocked) 6.dp else 0.dp
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(0.95f)
+                            .clickable(enabled = isUnlocked) {
+                                onSelectLevel(item.levelNumber)
+                            },
+                        shape = RoundedCornerShape(22.dp),
+                        color = cardBgColor,
+                        border = BorderStroke(if (isCurrentTarget) 2.dp else 1.dp, borderColor),
+                        shadowElevation = if (isCurrentTarget) 6.dp else if (isUnlocked) 3.dp else 0.dp
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize().padding(14.dp)) {
+                            // Top Badges
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isUnlocked) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                                 ) {
-                                    // Difficulty Pill
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = if (isUnlocked) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f) else Color.Transparent
-                                    ) {
-                                        Text(
-                                            text = item.difficulty,
-                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                            color = if (isUnlocked) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                        )
-                                    }
-
-                                    // Status icon (Lock or Star/Check)
-                                    if (!isUnlocked) {
-                                        Icon(
-                                            imageVector = Icons.Default.Lock,
-                                            contentDescription = strings.lockedLevel,
-                                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    } else if (item.levelNumber < highestUnlockedLevel) {
-                                        Icon(
-                                            imageVector = Icons.Default.CheckCircle,
-                                            contentDescription = "Completed",
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    } else {
-                                        Icon(
-                                            imageVector = Icons.Default.PlayCircle,
-                                            contentDescription = "Current",
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
+                                    Text(
+                                        text = item.difficulty,
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = if (isUnlocked) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                        fontSize = 10.sp
+                                    )
                                 }
 
-                                Spacer(modifier = Modifier.height(10.dp))
+                                if (!isUnlocked) {
+                                    Icon(
+                                        imageVector = Icons.Default.Lock,
+                                        contentDescription = "Locked",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                } else if (item.levelNumber < highestUnlockedLevel) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = "Completed",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.PlayCircle,
+                                        contentDescription = "Current Target",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
 
-                                // Level Number Avatar Circle
+                            // Center Content
+                            Column(
+                                modifier = Modifier.align(Alignment.Center),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(54.dp)
+                                        .size(46.dp)
                                         .clip(CircleShape)
                                         .background(
-                                            if (isUnlocked) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                            if (isCurrentTarget) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                                            else if (isUnlocked) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                                            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
                                         ),
                                     contentAlignment = Alignment.Center
                                 ) {
@@ -277,7 +295,7 @@ fun MatchCardLevelSelectScreen(
                                     )
                                 }
 
-                                Spacer(modifier = Modifier.height(10.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
 
                                 Text(
                                     text = "${strings.level} ${item.levelNumber}",
@@ -285,17 +303,18 @@ fun MatchCardLevelSelectScreen(
                                     color = if (isUnlocked) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                 )
 
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(2.dp))
 
                                 if (isUnlocked) {
                                     Row(
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
                                             text = "$totalCards Cards",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontSize = 11.sp
                                         )
                                         Text(
                                             text = "•",
@@ -305,7 +324,8 @@ fun MatchCardLevelSelectScreen(
                                         Text(
                                             text = "${item.timeLimitSeconds}s",
                                             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                                            color = MaterialTheme.colorScheme.primary
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontSize = 11.sp
                                         )
                                     }
                                 } else {
@@ -318,6 +338,21 @@ fun MatchCardLevelSelectScreen(
                                 }
                             }
                         }
+                    }
+                }
+
+                // Load More Endless Levels Button
+                item(span = { GridItemSpan(2) }) {
+                    OutlinedButton(
+                        onClick = { displayedMaxLevel += 5 },
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Explore Next 5 Levels (Procedural Endless)", fontWeight = FontWeight.Bold)
                     }
                 }
             }

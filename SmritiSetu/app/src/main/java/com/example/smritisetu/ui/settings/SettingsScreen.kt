@@ -1,5 +1,7 @@
 package com.example.smritisetu.ui.settings
 
+import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,15 +10,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
-import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -24,30 +28,29 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.smritisetu.data.AppLanguage
-import com.example.smritisetu.data.AppThemeMode
-import com.example.smritisetu.data.AuthManager
-import com.example.smritisetu.data.LocalAppStrings
+import com.example.smritisetu.data.*
 import com.example.smritisetu.theme.GlassCard
 import com.example.smritisetu.theme.getGlassGradientBrush
 import com.example.smritisetu.theme.isAppInDarkTheme
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onNavigateToEditProfile: () -> Unit,
     onNavigateToAppearance: () -> Unit,
+    onNavigateToCaregiverDashboard: () -> Unit = {},
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val currentUser by AuthManager.currentUser.collectAsState()
     val themeMode by AuthManager.themeMode.collectAsState()
     val fontScale by AuthManager.fontScale.collectAsState()
     val selectedLanguage by AuthManager.selectedLanguage.collectAsState()
+    val currentUser by AuthManager.currentUser.collectAsState()
     val darkTheme = isAppInDarkTheme(themeMode)
     val strings = LocalAppStrings.current
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
 
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -120,19 +123,19 @@ fun SettingsScreen(
                                 Column {
                                     Text(
                                         text = lang.nativeName,
-                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                                        color = MaterialTheme.colorScheme.onSurface
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
                                         text = lang.displayName,
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                                 if (isSelected) {
                                     Icon(
-                                        Icons.Default.Check,
-                                        contentDescription = null,
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = "Selected",
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -183,51 +186,162 @@ fun SettingsScreen(
                         darkTheme = darkTheme,
                         onClick = onNavigateToEditProfile
                     ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(62.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.primary),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (currentUser?.avatarUri != null) Icons.Default.AccountCircle else Icons.Default.Person,
+                                        contentDescription = "Profile Photo",
+                                        tint = MaterialTheme.colorScheme.onPrimary,
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(16.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = currentUser?.name ?: "User",
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = currentUser?.email ?: "email@example.com",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "${currentUser?.gender ?: "Female"} • ${currentUser?.age ?: 68} yrs • ${currentUser?.phone ?: ""}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                    contentDescription = strings.editProfile,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // Patient Link Code Banner
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.VpnKey,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column {
+                                            Text(
+                                                text = strings.patientLinkCode,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Text(
+                                                text = currentUser?.patientLinkCode ?: "SM-8492",
+                                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    }
+
+                                    TextButton(
+                                        onClick = {
+                                            val code = currentUser?.patientLinkCode ?: "SM-8492"
+                                            clipboardManager.setText(AnnotatedString(code))
+                                            scope.launch { snackbarHostState.showSnackbar(strings.codeCopied) }
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(strings.copyCode, fontSize = 11.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 2. Role Switcher for Testing (Caregiver Dashboard vs Patient Mode)
+                item {
+                    GlassCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(24.dp),
+                        darkTheme = darkTheme,
+                        onClick = onNavigateToCaregiverDashboard
+                    ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(20.dp),
+                                .padding(18.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(62.dp)
+                                    .size(46.dp)
                                     .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary),
+                                    .background(MaterialTheme.colorScheme.secondaryContainer),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = if (currentUser?.avatarUri != null) Icons.Default.AccountCircle else Icons.Default.Person,
-                                    contentDescription = "Profile Photo",
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(36.dp)
+                                    imageVector = Icons.Default.DashboardCustomize,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
 
-                            Spacer(modifier = Modifier.width(16.dp))
+                            Spacer(modifier = Modifier.width(14.dp))
 
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = currentUser?.name ?: "User",
+                                    text = strings.caregiverDashboard,
                                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = currentUser?.email ?: "email@example.com",
+                                    text = "View memory stats, cognitive logs & set reminders",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "${currentUser?.gender ?: "Female"} • ${currentUser?.age ?: 68} yrs • ${currentUser?.phone ?: ""}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
 
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                contentDescription = strings.editProfile,
+                                contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -235,7 +349,7 @@ fun SettingsScreen(
                     }
                 }
 
-                // 2. Category: "Theme Preference" (Contains App Theme, Font Size choosing bar, and Language choosing)
+                // 3. Category: "Theme Preference" (Contains App Theme, Font Size choosing bar, and Language choosing)
                 item {
                     Text(
                         text = strings.themePreferencesCategory,
@@ -258,110 +372,110 @@ fun SettingsScreen(
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             // (a) App Theme
-                            CleanSettingsTile(
-                                icon = Icons.Default.Palette,
-                                title = strings.appearance,
-                                subtitle = when (themeMode) {
-                                    AppThemeMode.SYSTEM -> strings.themeSystem
-                                    AppThemeMode.LIGHT -> strings.themeLight
-                                    AppThemeMode.DARK -> strings.themeDark
-                                    AppThemeMode.HIGH_CONTRAST -> strings.themeHighContrast
-                                },
-                                onClick = onNavigateToAppearance
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = strings.appearance,
+                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = when (themeMode) {
+                                            AppThemeMode.SYSTEM -> strings.themeSystem
+                                            AppThemeMode.LIGHT -> strings.themeLight
+                                            AppThemeMode.DARK -> strings.themeDark
+                                            AppThemeMode.HIGH_CONTRAST -> strings.themeHighContrast
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                TextButton(onClick = onNavigateToAppearance) {
+                                    Text("Change")
+                                }
+                            }
 
-                            HorizontalDivider(
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                            )
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
                             // (b) Font Size Choosing Bar
-                            Column {
+                            Column(modifier = Modifier.fillMaxWidth()) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                            imageVector = Icons.Default.FormatSize,
-                                            contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.size(24.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Text(
-                                            text = strings.fontSize,
-                                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                    }
                                     Text(
-                                        text = "${(fontScale * 100).roundToInt()}%",
-                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                        text = strings.fontSize,
+                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "${(fontScale * 100).toInt()}%",
+                                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                                         color = MaterialTheme.colorScheme.primary
                                     )
                                 }
-
-                                Spacer(modifier = Modifier.height(10.dp))
-
+                                Text(
+                                    text = strings.fontSizeSubtitle,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Text("A", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("A", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Slider(
                                         value = fontScale,
                                         onValueChange = { AuthManager.setFontScale(it) },
                                         valueRange = 0.85f..1.35f,
-                                        steps = 3,
+                                        steps = 4,
                                         modifier = Modifier
                                             .weight(1f)
                                             .padding(horizontal = 8.dp)
                                     )
-                                    Text("A", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                }
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    FilterChip(
-                                        selected = (fontScale - 1.0f) in -0.05f..0.05f,
-                                        onClick = { AuthManager.setFontScale(1.0f) },
-                                        label = { Text("100%") },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    FilterChip(
-                                        selected = (fontScale - 1.15f) in -0.05f..0.05f,
-                                        onClick = { AuthManager.setFontScale(1.15f) },
-                                        label = { Text("115%") },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    FilterChip(
-                                        selected = (fontScale - 1.30f) in -0.05f..0.05f,
-                                        onClick = { AuthManager.setFontScale(1.30f) },
-                                        label = { Text("130%") },
-                                        modifier = Modifier.weight(1f)
-                                    )
+                                    Text("A", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                                 }
                             }
 
-                            HorizontalDivider(
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
-                            )
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
                             // (c) Language Choosing
-                            CleanSettingsTile(
-                                icon = Icons.Default.Translate,
-                                title = strings.language,
-                                subtitle = "${selectedLanguage.nativeName} (${selectedLanguage.displayName})",
-                                onClick = { showLanguageDialog = true }
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showLanguageDialog = true },
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = strings.language,
+                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "${selectedLanguage.nativeName} (${selectedLanguage.displayName})",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Icon(
+                                    imageVector = Icons.Default.Translate,
+                                    contentDescription = "Change Language",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                     }
                 }
 
-                // 3. App Version
+                // 4. App Version
                 item {
                     GlassCard(
                         modifier = Modifier.fillMaxWidth(),
@@ -371,16 +485,10 @@ fun SettingsScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 18.dp, vertical = 14.dp),
+                                .padding(18.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(14.dp))
                             Column {
                                 Text(
                                     text = strings.appVersion,
@@ -388,16 +496,27 @@ fun SettingsScreen(
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "v1.0.0 (Build 104) • MDoNER SIH26003 Edition",
+                                    text = "v1.0.0 (Production Build • MDoNER SIH26003)",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer
+                            ) {
+                                Text(
+                                    text = "Latest",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                 )
                             }
                         }
                     }
                 }
 
-                // 4. Change Password Section (Current Password, New Password, Change Password Button)
+                // 5. Change Password Section
                 item {
                     Text(
                         text = strings.changePassword,
@@ -410,13 +529,13 @@ fun SettingsScreen(
                 item {
                     GlassCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(24.dp),
+                        shape = RoundedCornerShape(26.dp),
                         darkTheme = darkTheme
                     ) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(20.dp),
+                                .padding(18.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             if (passwordErrorMessage != null) {
@@ -459,12 +578,11 @@ fun SettingsScreen(
                                 },
                                 label = { Text(strings.currentPassword) },
                                 placeholder = { Text("••••••••") },
-                                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                                 trailingIcon = {
                                     IconButton(onClick = { currentPasswordVisible = !currentPasswordVisible }) {
                                         Icon(
                                             imageVector = if (currentPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                            contentDescription = null
+                                            contentDescription = if (currentPasswordVisible) "Hide" else "Show"
                                         )
                                     }
                                 },
@@ -485,12 +603,11 @@ fun SettingsScreen(
                                 },
                                 label = { Text(strings.newPassword) },
                                 placeholder = { Text("••••••••") },
-                                leadingIcon = { Icon(Icons.Default.LockReset, contentDescription = null) },
                                 trailingIcon = {
                                     IconButton(onClick = { newPasswordVisible = !newPasswordVisible }) {
                                         Icon(
                                             imageVector = if (newPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                                            contentDescription = null
+                                            contentDescription = if (newPasswordVisible) "Hide" else "Show"
                                         )
                                     }
                                 },
@@ -501,9 +618,6 @@ fun SettingsScreen(
                                 shape = RoundedCornerShape(12.dp)
                             )
 
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            // Change Password Button
                             Button(
                                 onClick = {
                                     if (currentPassword.isBlank() || newPassword.isBlank()) {
@@ -519,30 +633,26 @@ fun SettingsScreen(
                                         passwordSuccessMessage = strings.passwordChangedSuccess
                                         currentPassword = ""
                                         newPassword = ""
-                                        scope.launch { snackbarHostState.showSnackbar(strings.passwordChangedSuccess) }
+                                    } else {
+                                        passwordErrorMessage = result.exceptionOrNull()?.message
                                     }
                                 },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp),
+                                modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Icon(Icons.Default.Key, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(strings.changePasswordButton, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
                 }
 
-                // 5. Logout Button
+                // 6. Log Out Button
                 item {
-                    Spacer(modifier = Modifier.height(4.dp))
                     Button(
                         onClick = { showLogoutDialog = true },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(54.dp),
+                            .height(52.dp),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
@@ -551,7 +661,8 @@ fun SettingsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Logout,
-                            contentDescription = strings.logout
+                            contentDescription = "Log Out",
+                            modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
@@ -562,55 +673,5 @@ fun SettingsScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun CleanSettingsTile(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            modifier = Modifier.size(42.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-        }
-        Spacer(modifier = Modifier.width(14.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(16.dp)
-        )
     }
 }
