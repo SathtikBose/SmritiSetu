@@ -349,4 +349,83 @@ class AuthManagerTest {
         assertEquals(7, AuthManager.highestUnlockedPatternLevel.value)
         assertTrue(AuthManager.isPatternLevelUnlocked(7))
     }
+
+    @Test
+    fun calculateDaysBetween_calculatesAccurateCalendarDifferences() {
+        assertEquals(0L, AuthManager.calculateDaysBetween("2026-09-01", "2026-09-01"))
+        assertEquals(1L, AuthManager.calculateDaysBetween("2026-09-01", "2026-09-02"))
+        assertEquals(5L, AuthManager.calculateDaysBetween("2026-09-01", "2026-09-06"))
+        assertEquals(-1L, AuthManager.calculateDaysBetween("2026-09-02", "2026-09-01"))
+    }
+
+    @Test
+    fun recordDailyActivity_firstSession_startsStreakAt1() {
+        AuthManager.login("user@smritisetu.org", "pass")
+        assertEquals(0, AuthManager.streakDays.value)
+
+        val streak = AuthManager.recordDailyActivity("2026-09-01")
+        assertEquals(1, streak)
+        assertEquals(1, AuthManager.streakDays.value)
+        assertEquals("2026-09-01", AuthManager.lastActiveDate.value)
+        assertEquals(1, AuthManager.currentUser.value?.streakDays)
+    }
+
+    @Test
+    fun recordDailyActivity_sameDayPlay_maintainsStreak() {
+        AuthManager.login("user@smritisetu.org", "pass")
+        AuthManager.setStreakForTesting(days = 4, lastDate = "2026-09-01")
+
+        // User plays multiple levels on the same day
+        val streak = AuthManager.recordDailyActivity("2026-09-01")
+        assertEquals(4, streak)
+        assertEquals(4, AuthManager.streakDays.value)
+    }
+
+    @Test
+    fun recordDailyActivity_consecutiveDayPlay_incrementsStreak() {
+        AuthManager.login("user@smritisetu.org", "pass")
+        AuthManager.setStreakForTesting(days = 4, lastDate = "2026-09-01")
+
+        // User plays next consecutive calendar day (2026-09-02)
+        val streak = AuthManager.recordDailyActivity("2026-09-02")
+        assertEquals(5, streak)
+        assertEquals(5, AuthManager.streakDays.value)
+        assertEquals("2026-09-02", AuthManager.lastActiveDate.value)
+    }
+
+    @Test
+    fun recordDailyActivity_missedDay_resetsStreakTo1() {
+        AuthManager.login("user@smritisetu.org", "pass")
+        AuthManager.setStreakForTesting(days = 12, lastDate = "2026-09-01")
+
+        // User skips 2026-09-02 and plays on 2026-09-03
+        val streak = AuthManager.recordDailyActivity("2026-09-03")
+        assertEquals(1, streak)
+        assertEquals(1, AuthManager.streakDays.value)
+        assertEquals("2026-09-03", AuthManager.lastActiveDate.value)
+    }
+
+    @Test
+    fun getEffectiveStreakDays_inactiveMoreThanOneDay_returnsZero() {
+        AuthManager.login("user@smritisetu.org", "pass")
+        AuthManager.setStreakForTesting(days = 7, lastDate = "2026-09-01")
+
+        // Same day: streak is alive (7)
+        assertEquals(7, AuthManager.getEffectiveStreakDays("2026-09-01"))
+        // Next day (not played yet today, but played yesterday): streak is alive (7)
+        assertEquals(7, AuthManager.getEffectiveStreakDays("2026-09-02"))
+        // 2 days later: streak is broken (0) until user plays today
+        assertEquals(0, AuthManager.getEffectiveStreakDays("2026-09-03"))
+    }
+
+    @Test
+    fun addRewards_automaticallyRecordsDailyStreak() {
+        AuthManager.login("user@smritisetu.org", "pass")
+        assertEquals(0, AuthManager.streakDays.value)
+
+        // Completing a level adds rewards and records streak
+        AuthManager.addRewards(xp = 15, coins = 200)
+        assertEquals(1, AuthManager.streakDays.value)
+        assertEquals(1, AuthManager.currentUser.value?.streakDays)
+    }
 }
