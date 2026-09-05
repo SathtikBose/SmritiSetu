@@ -7,6 +7,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 import java.util.UUID
 
 enum class UserRole(val displayName: String) {
@@ -24,6 +27,90 @@ enum class AppThemeMode(val displayName: String) {
 enum class PerkType(val costCoins: Int, val displayName: String) {
     HINT(1000, "Extra Hint"),
     SKIP_LEVEL(2000, "Skip Level")
+}
+
+enum class LeagueTier(
+    val tierName: String,
+    val tierNameShort: String,
+    val minXp: Int,
+    val maxXp: Int,
+    val minLevels: Int,
+    val colorHex: Long,
+    val iconEmoji: String,
+    val description: String
+) {
+    BRONZE(
+        tierName = "Bronze Division",
+        tierNameShort = "Bronze",
+        minXp = 0,
+        maxXp = 224,
+        minLevels = 0,
+        colorHex = 0xFFCD7F32,
+        iconEmoji = "🥉",
+        description = "Early Steps • Levels 1 - 14"
+    ),
+    SILVER(
+        tierName = "Silver Division",
+        tierNameShort = "Silver",
+        minXp = 225, // 15 levels * 15 XP
+        maxXp = 449,
+        minLevels = 15,
+        colorHex = 0xFFC0C0C0,
+        iconEmoji = "🥈",
+        description = "Growing Focus • Levels 15 - 29"
+    ),
+    GOLD(
+        tierName = "Gold Division",
+        tierNameShort = "Gold",
+        minXp = 450, // 30 levels * 15 XP
+        maxXp = 674,
+        minLevels = 30,
+        colorHex = 0xFFFFD700,
+        iconEmoji = "🥇",
+        description = "Sharp Recall • Levels 30 - 44"
+    ),
+    PLATINUM(
+        tierName = "Platinum Division",
+        tierNameShort = "Platinum",
+        minXp = 675, // 45 levels * 15 XP
+        maxXp = 899,
+        minLevels = 45,
+        colorHex = 0xFF00CED1,
+        iconEmoji = "💎",
+        description = "Master Memory • Levels 45 - 59"
+    ),
+    DIAMOND(
+        tierName = "Diamond Division",
+        tierNameShort = "Diamond",
+        minXp = 900, // 60+ levels * 15 XP
+        maxXp = Int.MAX_VALUE,
+        minLevels = 60,
+        colorHex = 0xFF9932CC,
+        iconEmoji = "👑",
+        description = "Grand Master • Levels 60+"
+    );
+
+    fun getNextTier(): LeagueTier? {
+        val all = LeagueTier.entries
+        val nextIdx = ordinal + 1
+        return if (nextIdx < all.size) all[nextIdx] else null
+    }
+
+    companion object {
+        const val XP_PER_LEVEL = 15
+        const val LEVELS_PER_TIER = 15 // 15 levels required to advance to next tier
+        const val XP_PER_TIER = 225 // 15 * 15 = 225 XP
+
+        fun fromXp(monthlyXp: Int): LeagueTier {
+            return when {
+                monthlyXp < 225 -> BRONZE
+                monthlyXp < 450 -> SILVER
+                monthlyXp < 675 -> GOLD
+                monthlyXp < 900 -> PLATINUM
+                else -> DIAMOND
+            }
+        }
+    }
 }
 
 data class CaregiverReminder(
@@ -48,9 +135,10 @@ data class UserProfile(
     val preferredLanguage: String = "English",
     val isGoogleLinked: Boolean = false,
     val totalXp: Int = 1450,
+    val monthlyLeagueXp: Int = 315,
     val coins: Int = 1000,
     val streakDays: Int = 12,
-    val leagueTier: String = "Silver Division"
+    val leagueTier: String = LeagueTier.fromXp(315).tierName
 )
 
 data class CognitiveGameLog(
@@ -100,6 +188,13 @@ object AuthManager {
     private val _skipLevelCount = MutableStateFlow(0)
     val skipLevelCount: StateFlow<Int> = _skipLevelCount.asStateFlow()
 
+    // Monthly League Season XP & Reset Tracking
+    private val _monthlyLeagueXp = MutableStateFlow(315) // Default sample: 315 XP (Silver Tier)
+    val monthlyLeagueXp: StateFlow<Int> = _monthlyLeagueXp.asStateFlow()
+
+    private val _lastSeasonResetMonth = MutableStateFlow(getCurrentYearMonthKey())
+    val lastSeasonResetMonth: StateFlow<String> = _lastSeasonResetMonth.asStateFlow()
+
     // Caregiver Daily Reminders
     private val _reminders = MutableStateFlow<List<CaregiverReminder>>(
         listOf(
@@ -122,6 +217,61 @@ object AuthManager {
     )
     val telemetryLogs: StateFlow<List<CognitiveGameLog>> = _telemetryLogs.asStateFlow()
 
+    fun getCurrentYearMonthKey(): String {
+        val cal = Calendar.getInstance()
+        val year = cal.get(Calendar.YEAR)
+        val month = cal.get(Calendar.MONTH) + 1
+        return String.format(Locale.US, "%04d-%02d", year, month)
+    }
+
+    fun getDaysUntilNextMonthReset(): Int {
+        val cal = Calendar.getInstance()
+        val maxDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+        val currentDay = cal.get(Calendar.DAY_OF_MONTH)
+        return (maxDay - currentDay + 1).coerceAtLeast(1)
+    }
+
+    fun getCurrentSeasonName(): String {
+        val cal = Calendar.getInstance()
+        return SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(cal.time)
+    }
+
+    fun getCurrentLeagueTier(): LeagueTier = LeagueTier.fromXp(_monthlyLeagueXp.value)
+
+    fun checkAndPerformMonthlyLeagueReset(): Boolean {
+        val currentKey = getCurrentYearMonthKey()
+        if (_lastSeasonResetMonth.value != currentKey) {
+            _monthlyLeagueXp.value = 0
+            _lastSeasonResetMonth.value = currentKey
+            _currentUser.update { current ->
+                current?.copy(
+                    monthlyLeagueXp = 0,
+                    leagueTier = LeagueTier.BRONZE.tierName
+                )
+            }
+            persistToStorage()
+            try {
+                Log.d("SmritiSetu", "Monthly League Reset applied on Date 1 for season: $currentKey. Reset to Bronze.")
+            } catch (_: Exception) {}
+            return true
+        }
+        return false
+    }
+
+    fun setMonthlyLeagueXpForTesting(xp: Int, seasonMonthKey: String? = null) {
+        _monthlyLeagueXp.value = xp
+        if (seasonMonthKey != null) {
+            _lastSeasonResetMonth.value = seasonMonthKey
+        }
+        val tier = LeagueTier.fromXp(xp)
+        _currentUser.update { current ->
+            current?.copy(
+                monthlyLeagueXp = xp,
+                leagueTier = tier.tierName
+            )
+        }
+    }
+
     fun initStorage(context: Context) {
         try {
             sharedPreferences = context.getSharedPreferences("smritisetu_prefs", Context.MODE_PRIVATE)
@@ -135,6 +285,8 @@ object AuthManager {
         val prefs = sharedPreferences ?: return
         val savedCoins = prefs.getInt("user_coins", 1000)
         val savedXp = prefs.getInt("user_xp", 1450)
+        val savedMonthlyXp = prefs.getInt("monthly_league_xp", 315)
+        val savedResetMonth = prefs.getString("last_season_reset_month", getCurrentYearMonthKey()) ?: getCurrentYearMonthKey()
         val savedHighestLevel = prefs.getInt("highest_unlocked_level", 5)
         val savedHints = prefs.getInt("hints_count", 0)
         val savedSkips = prefs.getInt("skips_count", 0)
@@ -146,15 +298,22 @@ object AuthManager {
         _highestUnlockedLevel.value = savedHighestLevel.coerceAtLeast(5)
         _hintsCount.value = savedHints
         _skipLevelCount.value = savedSkips
+        _monthlyLeagueXp.value = savedMonthlyXp
+        _lastSeasonResetMonth.value = savedResetMonth
         _selectedLanguage.value = AppLanguage.entries.find { it.name == savedLangName } ?: AppLanguage.ENGLISH
 
         val userRole = UserRole.entries.find { it.name == savedRoleName } ?: UserRole.PATIENT
         _activeRoleView.value = userRole
 
+        checkAndPerformMonthlyLeagueReset()
+        val tier = LeagueTier.fromXp(_monthlyLeagueXp.value)
+
         _currentUser.update { current ->
             current?.copy(
                 coins = savedCoins,
                 totalXp = savedXp,
+                monthlyLeagueXp = _monthlyLeagueXp.value,
+                leagueTier = tier.tierName,
                 role = userRole,
                 patientLinkCode = savedLinkCode,
                 linkedPatientCode = savedLinkedCode
@@ -167,6 +326,8 @@ object AuthManager {
         prefs.edit().apply {
             putInt("user_coins", _currentUser.value?.coins ?: 1000)
             putInt("user_xp", _currentUser.value?.totalXp ?: 1450)
+            putInt("monthly_league_xp", _monthlyLeagueXp.value)
+            putString("last_season_reset_month", _lastSeasonResetMonth.value)
             putInt("highest_unlocked_level", _highestUnlockedLevel.value)
             putInt("hints_count", _hintsCount.value)
             putInt("skips_count", _skipLevelCount.value)
@@ -271,9 +432,15 @@ object AuthManager {
     }
 
     fun addRewards(xp: Int, coins: Int) {
+        checkAndPerformMonthlyLeagueReset()
+        _monthlyLeagueXp.update { it + xp }
+        val updatedTier = LeagueTier.fromXp(_monthlyLeagueXp.value)
+
         _currentUser.update { current ->
             current?.copy(
                 totalXp = (current.totalXp + xp),
+                monthlyLeagueXp = _monthlyLeagueXp.value,
+                leagueTier = updatedTier.tierName,
                 coins = (current.coins + coins)
             )
         }
@@ -281,11 +448,14 @@ object AuthManager {
     }
 
     fun login(email: String, pass: String): Result<UserProfile> {
+        val tier = LeagueTier.fromXp(_monthlyLeagueXp.value)
         val user = UserProfile(
             name = if (email.contains("@")) email.substringBefore("@").replaceFirstChar { it.uppercase() } else "User",
             email = email,
             role = UserRole.PATIENT,
-            preferredLanguage = _selectedLanguage.value.displayName
+            preferredLanguage = _selectedLanguage.value.displayName,
+            monthlyLeagueXp = _monthlyLeagueXp.value,
+            leagueTier = tier.tierName
         )
         _currentUser.value = user
         _isLoggedIn.value = true
@@ -302,13 +472,16 @@ object AuthManager {
         patientCodeToLink: String? = null
     ): Result<UserProfile> {
         val generatedPatientCode = "SM-" + (1000..9999).random()
+        val tier = LeagueTier.fromXp(_monthlyLeagueXp.value)
         val user = UserProfile(
             name = name.ifBlank { if (role == UserRole.CAREGIVER) "Caregiver" else "Patient" },
             email = email,
             role = role,
             patientLinkCode = generatedPatientCode,
             linkedPatientCode = if (role == UserRole.CAREGIVER) patientCodeToLink?.trim()?.uppercase() ?: "SM-8492" else null,
-            preferredLanguage = _selectedLanguage.value.displayName
+            preferredLanguage = _selectedLanguage.value.displayName,
+            monthlyLeagueXp = _monthlyLeagueXp.value,
+            leagueTier = tier.tierName
         )
         _currentUser.value = user
         _isLoggedIn.value = true
@@ -318,18 +491,21 @@ object AuthManager {
     }
 
     fun loginWithGoogle(): Result<UserProfile> {
-        val user = UserProfile(
+        val tier = LeagueTier.fromXp(_monthlyLeagueXp.value)
+        val googleUser = UserProfile(
             name = "Google User",
-            email = "user.google@gmail.com",
+            email = "user@gmail.com",
             isGoogleLinked = true,
             role = UserRole.PATIENT,
-            preferredLanguage = _selectedLanguage.value.displayName
+            preferredLanguage = _selectedLanguage.value.displayName,
+            monthlyLeagueXp = _monthlyLeagueXp.value,
+            leagueTier = tier.tierName
         )
-        _currentUser.value = user
+        _currentUser.value = googleUser
         _isLoggedIn.value = true
         _activeRoleView.value = UserRole.PATIENT
         persistToStorage()
-        return Result.success(user)
+        return Result.success(googleUser)
     }
 
     fun linkGoogleAccount(): Boolean {
@@ -410,6 +586,8 @@ object AuthManager {
         _highestUnlockedLevel.value = 5
         _hintsCount.value = 0
         _skipLevelCount.value = 0
+        _monthlyLeagueXp.value = 0
+        _lastSeasonResetMonth.value = getCurrentYearMonthKey()
         _activeRoleView.value = UserRole.PATIENT
         persistToStorage()
     }
