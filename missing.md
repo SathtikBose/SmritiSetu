@@ -144,13 +144,13 @@ public class User {
       "id": "PERK_HINT",
       "name": "Extra Hint",
       "costCoins": 1000,
-      "description": "Auto-highlights unmatched card pair or eliminates wrong pattern choices"
+      "description": "Auto-highlights unmatched card pair in Match The Card or eliminates 1 wrong choice in Pattern Match"
     },
     {
-      "id": "PERK_SHOW_AGAIN",
-      "name": "Show Again (Peek Pattern)",
+      "id": "PERK_PEEK",
+      "name": "Peek (Show Again)",
       "costCoins": 800,
-      "description": "Re-reveals hidden pattern sequence for 4 seconds during memorization games"
+      "description": "Re-reveals hidden cards (Match The Card) or hidden sequence (Pattern Match) for 4 seconds"
     },
     {
       "id": "PERK_SKIP",
@@ -161,6 +161,10 @@ public class User {
   ]
   ```
 
+> **📌 In-Game Perk Execution & Elder-Accessibility Rules**:
+> 1. **1 Perk Per Level Limit**: Only **one perk** can be activated per level attempt. Once activated, other perks are locked for that level attempt.
+> 2. **Direct In-Game Quick Buy**: If an elder has 0 inventory of a perk, clicking the perk in the bottom bar prompts a direct *"Buy & Use"* action deducting coins without leaving gameplay.
+
 #### 2. Buy Perk with Coins
 - **Method**: `POST`
 - **Path**: `/shop/buy`
@@ -168,11 +172,11 @@ public class User {
 - **Request Body**:
   ```json
   {
-    "perkType": "SHOW_AGAIN" // "HINT", "SHOW_AGAIN", or "SKIP_LEVEL"
+    "perkType": "PEEK" // "HINT", "PEEK" / "SHOW_AGAIN", or "SKIP_LEVEL"
   }
   ```
 - **Business Logic**:
-  - Verify user has sufficient coins (1,000 for HINT, 800 for SHOW_AGAIN, 2,000 for SKIP_LEVEL).
+  - Verify user has sufficient coins (1,000 for HINT, 800 for PEEK/SHOW_AGAIN, 2,000 for SKIP_LEVEL).
   - Deduct coins and increment `hintsCount`, `showAgainCount`, or `skipLevelCount`.
 - **Response `200 OK`**:
   ```json
@@ -192,7 +196,7 @@ public class User {
 - **Request Body**:
   ```json
   {
-    "perkType": "SHOW_AGAIN" // "HINT", "SHOW_AGAIN", or "SKIP_LEVEL"
+    "perkType": "PEEK" // "HINT", "PEEK", or "SKIP_LEVEL"
   }
   ```
 - **Response `200 OK`**:
@@ -247,6 +251,7 @@ public class User {
     "totalCards": 12,
     "idleHintsCount": 2,
     "perkHintsCount": 1,
+    "peekUsedCount": 0,
     "previewTimeSec": 3
   }
   ```
@@ -282,7 +287,7 @@ public class User {
     "timeTakenSec": 22,
     "triesCount": 1,
     "eliminatedChoicesCount": 0,
-    "showAgainUsedCount": 1,
+    "peekUsedCount": 1,
     "skipped": false
   }
   ```
