@@ -181,6 +181,10 @@ object AuthManager {
     private val _highestUnlockedLevel = MutableStateFlow(5)
     val highestUnlockedLevel: StateFlow<Int> = _highestUnlockedLevel.asStateFlow()
 
+    // Game 2 (Pattern Matching) Level Progression: Levels 1 to 5 unlocked by default
+    private val _highestUnlockedPatternLevel = MutableStateFlow(5)
+    val highestUnlockedPatternLevel: StateFlow<Int> = _highestUnlockedPatternLevel.asStateFlow()
+
     // In-Game Perks Inventory (Default: 0)
     private val _hintsCount = MutableStateFlow(0)
     val hintsCount: StateFlow<Int> = _hintsCount.asStateFlow()
@@ -288,6 +292,7 @@ object AuthManager {
         val savedMonthlyXp = prefs.getInt("monthly_league_xp", 315)
         val savedResetMonth = prefs.getString("last_season_reset_month", getCurrentYearMonthKey()) ?: getCurrentYearMonthKey()
         val savedHighestLevel = prefs.getInt("highest_unlocked_level", 5)
+        val savedHighestPatternLevel = prefs.getInt("highest_unlocked_pattern_level", 5)
         val savedHints = prefs.getInt("hints_count", 0)
         val savedSkips = prefs.getInt("skips_count", 0)
         val savedRoleName = prefs.getString("user_role", UserRole.PATIENT.name) ?: UserRole.PATIENT.name
@@ -296,6 +301,7 @@ object AuthManager {
         val savedLangName = prefs.getString("selected_language", AppLanguage.ENGLISH.name) ?: AppLanguage.ENGLISH.name
 
         _highestUnlockedLevel.value = savedHighestLevel.coerceAtLeast(5)
+        _highestUnlockedPatternLevel.value = savedHighestPatternLevel.coerceAtLeast(5)
         _hintsCount.value = savedHints
         _skipLevelCount.value = savedSkips
         _monthlyLeagueXp.value = savedMonthlyXp
@@ -329,6 +335,7 @@ object AuthManager {
             putInt("monthly_league_xp", _monthlyLeagueXp.value)
             putString("last_season_reset_month", _lastSeasonResetMonth.value)
             putInt("highest_unlocked_level", _highestUnlockedLevel.value)
+            putInt("highest_unlocked_pattern_level", _highestUnlockedPatternLevel.value)
             putInt("hints_count", _hintsCount.value)
             putInt("skips_count", _skipLevelCount.value)
             putString("user_role", _currentUser.value?.role?.name ?: UserRole.PATIENT.name)
@@ -343,9 +350,20 @@ object AuthManager {
         return level <= _highestUnlockedLevel.value
     }
 
+    fun isPatternLevelUnlocked(level: Int): Boolean {
+        return level <= _highestUnlockedPatternLevel.value
+    }
+
     fun unlockNextLevel(completedLevel: Int) {
         if (completedLevel >= _highestUnlockedLevel.value) {
             _highestUnlockedLevel.value = completedLevel + 1
+            persistToStorage()
+        }
+    }
+
+    fun unlockNextPatternLevel(completedLevel: Int) {
+        if (completedLevel >= _highestUnlockedPatternLevel.value) {
+            _highestUnlockedPatternLevel.value = completedLevel + 1
             persistToStorage()
         }
     }
@@ -584,6 +602,7 @@ object AuthManager {
         _isLoggedIn.value = false
         _currentUser.value = null
         _highestUnlockedLevel.value = 5
+        _highestUnlockedPatternLevel.value = 5
         _hintsCount.value = 0
         _skipLevelCount.value = 0
         _monthlyLeagueXp.value = 0
