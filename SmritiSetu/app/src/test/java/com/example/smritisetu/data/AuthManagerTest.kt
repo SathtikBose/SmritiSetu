@@ -261,4 +261,46 @@ class AuthManagerTest {
         assertEquals(65, user?.age)
         assertEquals("camera://avatar1", user?.avatarUri)
     }
+
+    @Test
+    fun leagueTiers_fromXp_correctlyMapsAll5Tiers() {
+        // 15 levels * 15 XP = 225 XP per tier milestone
+        assertEquals(LeagueTier.BRONZE, LeagueTier.fromXp(0))
+        assertEquals(LeagueTier.BRONZE, LeagueTier.fromXp(224))
+        assertEquals(LeagueTier.SILVER, LeagueTier.fromXp(225))
+        assertEquals(LeagueTier.SILVER, LeagueTier.fromXp(449))
+        assertEquals(LeagueTier.GOLD, LeagueTier.fromXp(450))
+        assertEquals(LeagueTier.GOLD, LeagueTier.fromXp(674))
+        assertEquals(LeagueTier.PLATINUM, LeagueTier.fromXp(675))
+        assertEquals(LeagueTier.PLATINUM, LeagueTier.fromXp(899))
+        assertEquals(LeagueTier.DIAMOND, LeagueTier.fromXp(900))
+        assertEquals(LeagueTier.DIAMOND, LeagueTier.fromXp(2500))
+    }
+
+    @Test
+    fun addRewards_updatesMonthlyLeagueXpAndPromotesTier() {
+        AuthManager.login("player@smritisetu.org", "pass")
+        AuthManager.setMonthlyLeagueXpForTesting(210) // 14 levels completed (Bronze)
+        assertEquals(LeagueTier.BRONZE.tierName, AuthManager.currentUser.value?.leagueTier)
+
+        // Clear 15th level (+15 XP) -> crosses 225 XP milestone!
+        AuthManager.addRewards(xp = 15, coins = 200)
+
+        assertEquals(225, AuthManager.monthlyLeagueXp.value)
+        assertEquals(LeagueTier.SILVER.tierName, AuthManager.currentUser.value?.leagueTier)
+    }
+
+    @Test
+    fun monthlyLeagueReset_onNewMonth_resetsMonthlyXpToBronze() {
+        AuthManager.login("player@smritisetu.org", "pass")
+        // Simulate previous month season with 550 XP (Gold tier)
+        AuthManager.setMonthlyLeagueXpForTesting(550, "2026-08")
+        assertEquals(LeagueTier.GOLD.tierName, AuthManager.currentUser.value?.leagueTier)
+
+        // Trigger monthly check on new month
+        val resetOccurred = AuthManager.checkAndPerformMonthlyLeagueReset()
+        assertTrue(resetOccurred)
+        assertEquals(0, AuthManager.monthlyLeagueXp.value)
+        assertEquals(LeagueTier.BRONZE.tierName, AuthManager.currentUser.value?.leagueTier)
+    }
 }

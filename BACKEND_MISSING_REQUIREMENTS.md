@@ -32,6 +32,18 @@ public class User {
     @Column(nullable = false)
     private Integer skipLevelCount = 0; // Skip level perks in inventory
 
+    @Column(nullable = false)
+    private Integer totalXp = 1450; // Lifetime Total Experience Points
+
+    @Column(nullable = false)
+    private Integer monthlyLeagueXp = 0; // XP earned in current calendar month season
+
+    @Column(nullable = false, length = 30)
+    private String leagueTier = "Bronze Division"; // "Bronze Division", "Silver Division", "Gold Division", "Platinum Division", "Diamond Division"
+
+    @Column(nullable = false, length = 7)
+    private String lastSeasonResetMonth = "2026-09"; // Format: YYYY-MM for Date 1 monthly reset check
+
     @Column(nullable = true)
     private String phone; // e.g. "+91 98765 43210"
 
@@ -290,13 +302,124 @@ When a user completes **every 5th level** (e.g. Level 5, 10, 15, 20...):
 
 ---
 
-## 📌 4. Backend Developer Action Checklist
+## 📌 4. Cognitive League System & Monthly Season Reset Engine
 
-- [ ] **Step 1**: Add `patientLinkCode`, `coins`, `hintsCount`, `skipLevelCount`, `phone`, `gender`, `age`, `avatarUri` to `User.java`.
+The mobile app includes a 5-tier Cognitive League System that motivates seniors through achievable, gentle milestones and resets on Date 1 of every month.
+
+### A. League Tiers & Progression Formula
+* **XP per Level Completed**: **+15 XP**
+* **Milestone per Tier**: **15 Levels** = $15 \times 15 = \mathbf{225\text{ XP}}$
+
+| League Tier | Monthly XP Required | Levels Completed | Icon / Theme | Description |
+|---|---|---|---|---|
+| 🥉 **Bronze Division** | $0 - 224$ XP | Levels $0 - 14$ | `#CD7F32` | Early Steps |
+| 🥈 **Silver Division** | $225 - 449$ XP | Levels $15 - 29$ | `#C0C0C0` | Growing Focus |
+| 🥇 **Gold Division** | $450 - 674$ XP | Levels $30 - 44$ | `#FFD700` | Sharp Recall |
+| 💎 **Platinum Division** | $675 - 899$ XP | Levels $45 - 59$ | `#00CED1` | Master Memory |
+| 👑 **Diamond Division** | $900+$ XP | Levels $60+$ | `#9932CC` | Grand Master |
+
+#### Calculation Utility (Spring Boot Service):
+```java
+public LeagueTier calculateTier(int monthlyXp) {
+    if (monthlyXp < 225) return LeagueTier.BRONZE;
+    if (monthlyXp < 450) return LeagueTier.SILVER;
+    if (monthlyXp < 675) return LeagueTier.GOLD;
+    if (monthlyXp < 900) return LeagueTier.PLATINUM;
+    return LeagueTier.DIAMOND;
+}
+```
+
+### B. Monthly Season Reset Mechanism (Date 1 Cron Scheduler)
+Every month on **Date 1 at 00:00:00**, the backend must reset active monthly XP back to 0 so all users begin the new month's friendly community season together.
+
+#### Spring Boot `@Scheduled` Task:
+```java
+@Component
+@RequiredArgsConstructor
+public class LeagueSeasonScheduler {
+
+    private final UserRepository userRepository;
+    private final SeasonHistoryRepository seasonHistoryRepository;
+
+    // Triggered at 00:00:00 on the 1st day of every month
+    @Scheduled(cron = "0 0 0 1 * ?")
+    @Transactional
+    public void executeMonthlySeasonReset() {
+        String currentMonthKey = YearMonth.now().toString(); // e.g. "2026-10"
+        String previousMonthKey = YearMonth.now().minusMonths(1).toString();
+
+        List<User> users = userRepository.findAll();
+        for (User user : users) {
+            // 1. Archive final standings of past month
+            SeasonHistory history = SeasonHistory.builder()
+                .userId(user.getId())
+                .seasonKey(previousMonthKey)
+                .finalMonthlyXp(user.getMonthlyLeagueXp())
+                .finalLeagueTier(user.getLeagueTier())
+                .archivedAt(Instant.now())
+                .build();
+            seasonHistoryRepository.save(history);
+
+            // 2. Reset user's monthly progress for new season
+            user.setMonthlyLeagueXp(0);
+            user.setLeagueTier("Bronze Division");
+            user.setLastSeasonResetMonth(currentMonthKey);
+        }
+        userRepository.saveAll(users);
+    }
+}
+```
+
+### C. League REST Endpoints
+
+#### 1. Get Current User League Status
+* **Method**: `GET`
+* **Path**: `/api/v1/league/status`
+* **Auth**: `Bearer <JWT_TOKEN>`
+* **Response `200 OK`**:
+```json
+{
+  "currentTier": "Silver Division",
+  "monthlyXp": 315,
+  "lifetimeTotalXp": 1450,
+  "nextTier": "Gold Division",
+  "xpNeededForNextTier": 135,
+  "levelsNeededForNextTier": 9,
+  "tierProgressPercentage": 0.40,
+  "seasonName": "September 2026",
+  "daysUntilMonthlyReset": 25,
+  "streakDays": 12
+}
+```
+
+#### 2. Get Community League Leaderboard (Top Division Standings)
+* **Method**: `GET`
+* **Path**: `/api/v1/league/leaderboard?tier=Silver%20Division`
+* **Auth**: `Bearer <JWT_TOKEN>`
+* **Response `200 OK`**:
+```json
+{
+  "tier": "Silver Division",
+  "season": "September 2026",
+  "standings": [
+    { "rank": 1, "userName": "Dr. Ananya S.", "monthlyXp": 420, "avatarUri": "camera://avatar1", "streak": 14 },
+    { "rank": 2, "userName": "Biren Gogoi", "monthlyXp": 390, "avatarUri": null, "streak": 11 },
+    { "rank": 3, "userName": "Minati Deka", "monthlyXp": 345, "avatarUri": null, "streak": 9 }
+  ]
+}
+```
+
+---
+
+## 📌 5. Backend Developer Action Checklist
+
+- [ ] **Step 1**: Add `patientLinkCode`, `coins`, `hintsCount`, `skipLevelCount`, `totalXp`, `monthlyLeagueXp`, `leagueTier`, `lastSeasonResetMonth`, `phone`, `gender`, `age`, `avatarUri` to `User.java`.
 - [ ] **Step 2**: Auto-generate unique `SM-XXXX` code on `POST /auth/register` for Patient accounts.
 - [ ] **Step 3**: Implement `POST /caregiver/link-by-code` and `GET /caregiver/patient/summary`.
 - [ ] **Step 4**: Implement `GET /shop/items`, `POST /shop/buy`, and `POST /user/perks/use`.
 - [ ] **Step 5**: Implement `POST /auth/change-password`.
 - [ ] **Step 6**: Update `LevelAttemptRequest` to accept `timeTakenMs`, `idleHintsCount`, `perkHintsCount`.
 - [ ] **Step 7**: Configure `WebClient` / `RestTemplate` service to call AI model on port `8000` on every 5th level.
-- [ ] **Step 8**: Award **+15 XP** and **+200 Coins** in `GameService.processLevelAttempt`.
+- [ ] **Step 8**: Award **+15 XP** and **+200 Coins** in `GameService.processLevelAttempt`, incrementing `monthlyLeagueXp` and promoting `leagueTier`.
+- [ ] **Step 9**: Implement Date 1 Monthly League Reset Cron `@Scheduled(cron = "0 0 0 1 * ?")` and endpoints `GET /api/v1/league/status` and `GET /api/v1/league/leaderboard`.
+
