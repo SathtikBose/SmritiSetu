@@ -36,6 +36,7 @@ fun ShopScreen(
     val themeMode by AuthManager.themeMode.collectAsState()
     val currentUser by AuthManager.currentUser.collectAsState()
     val hintsCount by AuthManager.hintsCount.collectAsState()
+    val showAgainCount by AuthManager.showAgainCount.collectAsState()
     val skipLevelCount by AuthManager.skipLevelCount.collectAsState()
     val darkTheme = isAppInDarkTheme(themeMode)
     val strings = LocalAppStrings.current
@@ -112,8 +113,8 @@ fun ShopScreen(
                 // Perk 1: Extra Hint (1,000 Coins)
                 ShopItemCard(
                     title = strings.buyHint,
-                    description = "Reveals and flashes a matching pair in any level without penalty.",
-                    costText = strings.hintCost,
+                    description = "Eliminates wrong options in Pattern Match or highlights matches in Card game.",
+                    costText = "1,000 Coins",
                     inventoryCount = hintsCount,
                     inventoryLabel = strings.inventoryCount,
                     icon = Icons.Default.Lightbulb,
@@ -130,10 +131,31 @@ fun ShopScreen(
                     }
                 )
 
-                // Perk 2: Skip Level (2,000 Coins)
+                // Perk 2: Show Again / Peek Pattern (800 Coins)
+                ShopItemCard(
+                    title = "Show Again (Peek Pattern)",
+                    description = "Re-reveals the hidden pattern for 4 seconds during Pattern Matching games so you can memorize it again.",
+                    costText = "800 Coins",
+                    inventoryCount = showAgainCount,
+                    inventoryLabel = strings.inventoryCount,
+                    icon = Icons.Default.Visibility,
+                    darkTheme = darkTheme,
+                    onBuy = {
+                        val result = AuthManager.buyPerk(PerkType.SHOW_AGAIN)
+                        scope.launch {
+                            if (result.isSuccess) {
+                                snackbarHostState.showSnackbar("Purchased 1 Show Again peek perk!")
+                            } else {
+                                snackbarHostState.showSnackbar(strings.insufficientCoins)
+                            }
+                        }
+                    }
+                )
+
+                // Perk 3: Skip Level (2,000 Coins)
                 ShopItemCard(
                     title = strings.buySkipLevel,
-                    description = "Instantly clears the current level, awards full XP & Coins, and unlocks the next level.",
+                    description = "Instantly clears the current level, awards full +15 XP & +200 Coins, and unlocks the next level.",
                     costText = strings.skipCost,
                     inventoryCount = skipLevelCount,
                     inventoryLabel = strings.inventoryCount,
@@ -169,7 +191,7 @@ fun ShopScreen(
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "Earn +200 Coins for each level you complete in Match The Card!",
+                            text = "Earn +200 Coins and +15 XP for every level you complete across all cognitive games!",
                             style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
                             color = MaterialTheme.colorScheme.onSurface
                         )

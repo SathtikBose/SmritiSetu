@@ -26,6 +26,7 @@ enum class AppThemeMode(val displayName: String) {
 
 enum class PerkType(val costCoins: Int, val displayName: String) {
     HINT(1000, "Extra Hint"),
+    SHOW_AGAIN(800, "Show Again"),
     SKIP_LEVEL(2000, "Skip Level")
 }
 
@@ -189,6 +190,9 @@ object AuthManager {
     private val _hintsCount = MutableStateFlow(0)
     val hintsCount: StateFlow<Int> = _hintsCount.asStateFlow()
 
+    private val _showAgainCount = MutableStateFlow(0)
+    val showAgainCount: StateFlow<Int> = _showAgainCount.asStateFlow()
+
     private val _skipLevelCount = MutableStateFlow(0)
     val skipLevelCount: StateFlow<Int> = _skipLevelCount.asStateFlow()
 
@@ -294,6 +298,7 @@ object AuthManager {
         val savedHighestLevel = prefs.getInt("highest_unlocked_level", 5)
         val savedHighestPatternLevel = prefs.getInt("highest_unlocked_pattern_level", 5)
         val savedHints = prefs.getInt("hints_count", 0)
+        val savedShowAgain = prefs.getInt("show_again_count", 0)
         val savedSkips = prefs.getInt("skips_count", 0)
         val savedRoleName = prefs.getString("user_role", UserRole.PATIENT.name) ?: UserRole.PATIENT.name
         val savedLinkCode = prefs.getString("patient_link_code", "SM-8492") ?: "SM-8492"
@@ -303,6 +308,7 @@ object AuthManager {
         _highestUnlockedLevel.value = savedHighestLevel.coerceAtLeast(5)
         _highestUnlockedPatternLevel.value = savedHighestPatternLevel.coerceAtLeast(5)
         _hintsCount.value = savedHints
+        _showAgainCount.value = savedShowAgain
         _skipLevelCount.value = savedSkips
         _monthlyLeagueXp.value = savedMonthlyXp
         _lastSeasonResetMonth.value = savedResetMonth
@@ -337,6 +343,7 @@ object AuthManager {
             putInt("highest_unlocked_level", _highestUnlockedLevel.value)
             putInt("highest_unlocked_pattern_level", _highestUnlockedPatternLevel.value)
             putInt("hints_count", _hintsCount.value)
+            putInt("show_again_count", _showAgainCount.value)
             putInt("skips_count", _skipLevelCount.value)
             putString("user_role", _currentUser.value?.role?.name ?: UserRole.PATIENT.name)
             putString("patient_link_code", _currentUser.value?.patientLinkCode ?: "SM-8492")
@@ -424,6 +431,7 @@ object AuthManager {
         // Increment perk count
         when (perkType) {
             PerkType.HINT -> _hintsCount.update { it + 1 }
+            PerkType.SHOW_AGAIN -> _showAgainCount.update { it + 1 }
             PerkType.SKIP_LEVEL -> _skipLevelCount.update { it + 1 }
         }
 
@@ -434,6 +442,15 @@ object AuthManager {
     fun useHint(): Boolean {
         if (_hintsCount.value > 0) {
             _hintsCount.update { it - 1 }
+            persistToStorage()
+            return true
+        }
+        return false
+    }
+
+    fun useShowAgain(): Boolean {
+        if (_showAgainCount.value > 0) {
+            _showAgainCount.update { it - 1 }
             persistToStorage()
             return true
         }
@@ -604,6 +621,7 @@ object AuthManager {
         _highestUnlockedLevel.value = 5
         _highestUnlockedPatternLevel.value = 5
         _hintsCount.value = 0
+        _showAgainCount.value = 0
         _skipLevelCount.value = 0
         _monthlyLeagueXp.value = 0
         _lastSeasonResetMonth.value = getCurrentYearMonthKey()
