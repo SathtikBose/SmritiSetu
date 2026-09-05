@@ -36,6 +36,7 @@ fun LeagueScreen(
     val strings = LocalAppStrings.current
     val currentUser by AuthManager.currentUser.collectAsState()
     val monthlyXp by AuthManager.monthlyLeagueXp.collectAsState()
+    val streakDays by AuthManager.streakDays.collectAsState()
 
     // Trigger any pending monthly reset check on screen entry
     LaunchedEffect(Unit) {
@@ -247,7 +248,7 @@ fun LeagueScreen(
                         StatPill(
                             icon = Icons.Default.LocalFireDepartment,
                             label = "Streak",
-                            value = "${currentUser?.streakDays ?: 12}d",
+                            value = "${streakDays}d",
                             tint = Color(0xFFFF7043)
                         )
                     }

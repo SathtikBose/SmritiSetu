@@ -47,6 +47,12 @@ public class User {
     @Column(nullable = false, length = 7)
     private String lastSeasonResetMonth = "2026-09"; // Format: YYYY-MM for Date 1 monthly reset check
 
+    @Column(nullable = false)
+    private Integer streakDays = 0; // Consecutive daily active gameplay streak
+
+    @Column(nullable = true, length = 10)
+    private String lastActiveDate; // Format: YYYY-MM-DD (e.g. "2026-09-05") for daily streak tracking
+
     @Column(nullable = true)
     private String phone; // e.g. "+91 98765 43210"
 
@@ -497,11 +503,58 @@ public class LeagueSeasonScheduler {
 }
 ```
 
+### D. Dynamic Daily Streak Calculation Engine
+
+Streak calculation rules applied upon game level completion (`POST /api/v1/game/level/attempt` or reward claim):
+
+```java
+@Service
+public class DailyStreakService {
+
+    public int recordDailyActivity(User user, LocalDate today) {
+        String lastDateStr = user.getLastActiveDate();
+        int currentStreak = user.getStreakDays() != null ? user.getStreakDays() : 0;
+        int newStreak;
+
+        if (lastDateStr == null) {
+            // First recorded gameplay
+            newStreak = 1;
+        } else {
+            LocalDate lastDate = LocalDate.parse(lastDateStr);
+            long daysDiff = ChronoUnit.DAYS.between(lastDate, today);
+
+            if (daysDiff == 0) {
+                // Same day: maintain active streak (do not double increment)
+                newStreak = Math.max(1, currentStreak);
+            } else if (daysDiff == 1) {
+                // Consecutive calendar day: increment streak by 1
+                newStreak = Math.max(0, currentStreak) + 1;
+            } else {
+                // Gap of 2+ days (missed days): reset streak to 1 (new streak starting today)
+                newStreak = 1;
+            }
+        }
+
+        user.setStreakDays(newStreak);
+        user.setLastActiveDate(today.toString());
+        return newStreak;
+    }
+
+    public int getEffectiveStreak(User user, LocalDate today) {
+        if (user.getLastActiveDate() == null) return 0;
+        LocalDate lastDate = LocalDate.parse(user.getLastActiveDate());
+        long daysDiff = ChronoUnit.DAYS.between(lastDate, today);
+        // Active if played today (diff=0) or yesterday (diff=1)
+        return (daysDiff <= 1) ? (user.getStreakDays() != null ? user.getStreakDays() : 0) : 0;
+    }
+}
+```
+
 ---
 
 ## 📌 5. Backend Developer Action Checklist
 
-- [ ] **Step 1**: Add `patientLinkCode`, `coins`, `hintsCount`, `skipLevelCount`, `showAgainCount`, `totalXp`, `monthlyLeagueXp`, `leagueTier`, `lastSeasonResetMonth`, `phone`, `gender`, `age`, `avatarUri`, `highestUnlockedLevel`, `highestUnlockedPatternLevel` to `User.java`.
+- [ ] **Step 1**: Add `patientLinkCode`, `coins`, `hintsCount`, `skipLevelCount`, `showAgainCount`, `totalXp`, `monthlyLeagueXp`, `leagueTier`, `lastSeasonResetMonth`, `streakDays`, `lastActiveDate`, `phone`, `gender`, `age`, `avatarUri`, `highestUnlockedLevel`, `highestUnlockedPatternLevel` to `User.java`.
 - [ ] **Step 2**: Auto-generate unique `SM-XXXX` code on `POST /auth/register` for Patient accounts.
 - [ ] **Step 3**: Implement `POST /caregiver/link-by-code` and `GET /caregiver/patient/summary`.
 - [ ] **Step 4**: Implement `GET /shop/items`, `POST /shop/buy`, and `POST /user/perks/use` (including `PERK_HINT` 1,000 coins, `PERK_SHOW_AGAIN` 800 coins, and `PERK_SKIP` 2,000 coins).
@@ -510,4 +563,5 @@ public class LeagueSeasonScheduler {
 - [ ] **Step 7**: Configure `WebClient` / `RestTemplate` service to call AI model on port `8000` on every 5th level.
 - [ ] **Step 8**: Award **+15 XP** and **+200 Coins** in `GameService.processLevelAttempt`, incrementing `monthlyLeagueXp` and promoting `leagueTier`.
 - [ ] **Step 9**: Implement Date 1 Monthly League Reset Cron `@Scheduled(cron = "0 0 0 1 * ?")` and endpoints `GET /api/v1/league/status` and `GET /api/v1/league/leaderboard`.
+- [ ] **Step 10**: Integrate `DailyStreakService` into `GameService` to calculate dynamic consecutive daily streaks upon level attempts and telemetry logs.
 

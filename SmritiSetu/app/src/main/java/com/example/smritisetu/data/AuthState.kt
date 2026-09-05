@@ -142,7 +142,8 @@ data class UserProfile(
     val totalXp: Int = 1450,
     val monthlyLeagueXp: Int = 315,
     val coins: Int = 1000,
-    val streakDays: Int = 12,
+    val streakDays: Int = 0,
+    val lastActiveDate: String? = null,
     val leagueTier: String = LeagueTier.fromXp(315).tierName
 )
 
@@ -166,6 +167,13 @@ object AuthManager {
 
     private val _currentUser = MutableStateFlow<UserProfile?>(UserProfile())
     val currentUser: StateFlow<UserProfile?> = _currentUser.asStateFlow()
+
+    // Dynamic Daily Streak Tracking
+    private val _streakDays = MutableStateFlow(0)
+    val streakDays: StateFlow<Int> = _streakDays.asStateFlow()
+
+    private val _lastActiveDate = MutableStateFlow<String?>(null)
+    val lastActiveDate: StateFlow<String?> = _lastActiveDate.asStateFlow()
 
     // Active View Mode: allows instant switching between Patient Mode and Caregiver Dashboard for testing
     private val _activeRoleView = MutableStateFlow(UserRole.PATIENT)
@@ -237,6 +245,104 @@ object AuthManager {
         return String.format(Locale.US, "%04d-%02d", year, month)
     }
 
+    fun getTodayDateKey(): String {
+        val cal = Calendar.getInstance()
+        return SimpleDateFormat("yyyy-MM-dd", Locale.US).format(cal.time)
+    }
+
+    fun calculateDaysBetween(startDateStr: String, endDateStr: String): Long? {
+        return try {
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            val startDate = sdf.parse(startDateStr) ?: return null
+            val endDate = sdf.parse(endDateStr) ?: return null
+
+            val cal1 = Calendar.getInstance().apply {
+                time = startDate
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            val cal2 = Calendar.getInstance().apply {
+                time = endDate
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            val diffMs = cal2.timeInMillis - cal1.timeInMillis
+            diffMs / (1000 * 60 * 60 * 24)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun getEffectiveStreakDays(todayKey: String = getTodayDateKey()): Int {
+        val lastDate = _lastActiveDate.value ?: return 0
+        val diff = calculateDaysBetween(lastDate, todayKey)
+        return if (diff != null && diff <= 1L) {
+            _streakDays.value
+        } else {
+            0
+        }
+    }
+
+    fun recordDailyActivity(todayKey: String = getTodayDateKey()): Int {
+        val lastDate = _lastActiveDate.value
+        val currentStreak = _streakDays.value
+
+        val newStreak = when {
+            lastDate == null -> {
+                // First session
+                1
+            }
+            else -> {
+                val diff = calculateDaysBetween(lastDate, todayKey)
+                when {
+                    diff == 0L -> {
+                        // Already played today: maintain current streak (ensure at least 1)
+                        currentStreak.coerceAtLeast(1)
+                    }
+                    diff == 1L -> {
+                        // Played consecutive day: increment streak
+                        (currentStreak.coerceAtLeast(0)) + 1
+                    }
+                    diff != null && diff > 1L -> {
+                        // Missed one or more days: start new streak
+                        1
+                    }
+                    else -> {
+                        // Clock adjustment fallback
+                        currentStreak.coerceAtLeast(1)
+                    }
+                }
+            }
+        }
+
+        _streakDays.value = newStreak
+        _lastActiveDate.value = todayKey
+
+        _currentUser.update { current ->
+            current?.copy(
+                streakDays = newStreak,
+                lastActiveDate = todayKey
+            )
+        }
+        persistToStorage()
+        return newStreak
+    }
+
+    fun setStreakForTesting(days: Int, lastDate: String?) {
+        _streakDays.value = days
+        _lastActiveDate.value = lastDate
+        _currentUser.update { current ->
+            current?.copy(
+                streakDays = days,
+                lastActiveDate = lastDate
+            )
+        }
+    }
+
     fun getDaysUntilNextMonthReset(): Int {
         val cal = Calendar.getInstance()
         val maxDay = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
@@ -305,6 +411,8 @@ object AuthManager {
         val savedHints = prefs.getInt("hints_count", 0)
         val savedShowAgain = prefs.getInt("show_again_count", 0)
         val savedSkips = prefs.getInt("skips_count", 0)
+        val savedStreak = prefs.getInt("streak_days", 0)
+        val savedLastActiveDate = prefs.getString("last_active_date", null)
         val savedRoleName = prefs.getString("user_role", UserRole.PATIENT.name) ?: UserRole.PATIENT.name
         val savedLinkCode = prefs.getString("patient_link_code", "SM-8492") ?: "SM-8492"
         val savedLinkedCode = prefs.getString("linked_patient_code", null)
@@ -317,7 +425,17 @@ object AuthManager {
         _skipLevelCount.value = savedSkips
         _monthlyLeagueXp.value = savedMonthlyXp
         _lastSeasonResetMonth.value = savedResetMonth
+        _lastActiveDate.value = savedLastActiveDate
         _selectedLanguage.value = AppLanguage.entries.find { it.name == savedLangName } ?: AppLanguage.ENGLISH
+
+        // Compute effective active streak based on last active date
+        val effectiveStreak = if (savedLastActiveDate != null) {
+            val diff = calculateDaysBetween(savedLastActiveDate, getTodayDateKey())
+            if (diff != null && diff <= 1L) savedStreak else 0
+        } else {
+            0
+        }
+        _streakDays.value = effectiveStreak
 
         val userRole = UserRole.entries.find { it.name == savedRoleName } ?: UserRole.PATIENT
         _activeRoleView.value = userRole
@@ -331,6 +449,8 @@ object AuthManager {
                 totalXp = savedXp,
                 monthlyLeagueXp = _monthlyLeagueXp.value,
                 leagueTier = tier.tierName,
+                streakDays = effectiveStreak,
+                lastActiveDate = savedLastActiveDate,
                 role = userRole,
                 patientLinkCode = savedLinkCode,
                 linkedPatientCode = savedLinkedCode
@@ -350,6 +470,8 @@ object AuthManager {
             putInt("hints_count", _hintsCount.value)
             putInt("show_again_count", _showAgainCount.value)
             putInt("skips_count", _skipLevelCount.value)
+            putInt("streak_days", _streakDays.value)
+            putString("last_active_date", _lastActiveDate.value)
             putString("user_role", _currentUser.value?.role?.name ?: UserRole.PATIENT.name)
             putString("patient_link_code", _currentUser.value?.patientLinkCode ?: "SM-8492")
             putString("linked_patient_code", _currentUser.value?.linkedPatientCode)
@@ -475,6 +597,7 @@ object AuthManager {
 
     fun addRewards(xp: Int, coins: Int) {
         checkAndPerformMonthlyLeagueReset()
+        val updatedStreak = recordDailyActivity()
         _monthlyLeagueXp.update { it + xp }
         val updatedTier = LeagueTier.fromXp(_monthlyLeagueXp.value)
 
@@ -483,7 +606,9 @@ object AuthManager {
                 totalXp = (current.totalXp + xp),
                 monthlyLeagueXp = _monthlyLeagueXp.value,
                 leagueTier = updatedTier.tierName,
-                coins = (current.coins + coins)
+                coins = (current.coins + coins),
+                streakDays = updatedStreak,
+                lastActiveDate = _lastActiveDate.value
             )
         }
         persistToStorage()
@@ -497,7 +622,9 @@ object AuthManager {
             role = UserRole.PATIENT,
             preferredLanguage = _selectedLanguage.value.displayName,
             monthlyLeagueXp = _monthlyLeagueXp.value,
-            leagueTier = tier.tierName
+            leagueTier = tier.tierName,
+            streakDays = _streakDays.value,
+            lastActiveDate = _lastActiveDate.value
         )
         _currentUser.value = user
         _isLoggedIn.value = true
@@ -523,7 +650,9 @@ object AuthManager {
             linkedPatientCode = if (role == UserRole.CAREGIVER) patientCodeToLink?.trim()?.uppercase() ?: "SM-8492" else null,
             preferredLanguage = _selectedLanguage.value.displayName,
             monthlyLeagueXp = _monthlyLeagueXp.value,
-            leagueTier = tier.tierName
+            leagueTier = tier.tierName,
+            streakDays = _streakDays.value,
+            lastActiveDate = _lastActiveDate.value
         )
         _currentUser.value = user
         _isLoggedIn.value = true
@@ -541,7 +670,9 @@ object AuthManager {
             role = UserRole.PATIENT,
             preferredLanguage = _selectedLanguage.value.displayName,
             monthlyLeagueXp = _monthlyLeagueXp.value,
-            leagueTier = tier.tierName
+            leagueTier = tier.tierName,
+            streakDays = _streakDays.value,
+            lastActiveDate = _lastActiveDate.value
         )
         _currentUser.value = googleUser
         _isLoggedIn.value = true
@@ -598,6 +729,7 @@ object AuthManager {
 
     fun recordGameTelemetry(log: CognitiveGameLog) {
         _telemetryLogs.update { it + log }
+        recordDailyActivity()
         try {
             Log.i(
                 "SmritiSetuAnalytics",
@@ -631,6 +763,8 @@ object AuthManager {
         _showAgainCount.value = 0
         _skipLevelCount.value = 0
         _monthlyLeagueXp.value = 0
+        _streakDays.value = 0
+        _lastActiveDate.value = null
         _lastSeasonResetMonth.value = getCurrentYearMonthKey()
         _activeRoleView.value = UserRole.PATIENT
         persistToStorage()
