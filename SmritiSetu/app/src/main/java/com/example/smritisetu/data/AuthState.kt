@@ -26,8 +26,12 @@ enum class AppThemeMode(val displayName: String) {
 
 enum class PerkType(val costCoins: Int, val displayName: String) {
     HINT(1000, "Extra Hint"),
-    SHOW_AGAIN(800, "Show Again"),
-    SKIP_LEVEL(2000, "Skip Level")
+    SHOW_AGAIN(800, "Peek"),
+    SKIP_LEVEL(2000, "Skip Level");
+
+    companion object {
+        val PEEK = SHOW_AGAIN
+    }
 }
 
 enum class LeagueTier(
@@ -192,6 +196,7 @@ object AuthManager {
 
     private val _showAgainCount = MutableStateFlow(0)
     val showAgainCount: StateFlow<Int> = _showAgainCount.asStateFlow()
+    val peekCount: StateFlow<Int> = _showAgainCount.asStateFlow()
 
     private val _skipLevelCount = MutableStateFlow(0)
     val skipLevelCount: StateFlow<Int> = _skipLevelCount.asStateFlow()
@@ -456,6 +461,8 @@ object AuthManager {
         }
         return false
     }
+
+    fun usePeek(): Boolean = useShowAgain()
 
     fun useSkipLevel(): Boolean {
         if (_skipLevelCount.value > 0) {

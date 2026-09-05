@@ -131,20 +131,20 @@ fun ShopScreen(
                     }
                 )
 
-                // Perk 2: Show Again / Peek Pattern (800 Coins)
+                // Perk 2: Peek / Show Again (800 Coins)
                 ShopItemCard(
-                    title = "Show Again (Peek Pattern)",
-                    description = "Re-reveals the hidden pattern for 4 seconds during Pattern Matching games so you can memorize it again.",
+                    title = "Peek (Show Again)",
+                    description = "Re-reveals hidden cards in Match The Card or hidden sequence in Pattern Match for 4 seconds so you can memorize again.",
                     costText = "800 Coins",
                     inventoryCount = showAgainCount,
                     inventoryLabel = strings.inventoryCount,
                     icon = Icons.Default.Visibility,
                     darkTheme = darkTheme,
                     onBuy = {
-                        val result = AuthManager.buyPerk(PerkType.SHOW_AGAIN)
+                        val result = AuthManager.buyPerk(PerkType.PEEK)
                         scope.launch {
                             if (result.isSuccess) {
-                                snackbarHostState.showSnackbar("Purchased 1 Show Again peek perk!")
+                                snackbarHostState.showSnackbar("Purchased 1 Peek perk!")
                             } else {
                                 snackbarHostState.showSnackbar(strings.insufficientCoins)
                             }

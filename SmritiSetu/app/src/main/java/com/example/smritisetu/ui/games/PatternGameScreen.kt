@@ -105,6 +105,7 @@ fun PatternGameScreen(
 
     var isPatternPreviewActive by remember { mutableStateOf(true) }
     var previewTimeRemainingSeconds by remember { mutableIntStateOf(getPreviewDurationForLevel(initialLevel)) }
+    var hasUsedPerkThisLevel by remember(currentLevel) { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -197,6 +198,7 @@ fun PatternGameScreen(
     fun resetCurrentLevel() {
         triesCount = 0
         hintsTriggeredCount = 0
+        hasUsedPerkThisLevel = false
         levelStartTime = System.currentTimeMillis()
         timeRemainingSeconds = getTimeLimitForLevel(currentLevel)
         isPatternPreviewActive = true
@@ -286,9 +288,14 @@ fun PatternGameScreen(
 
     // Hint Perk Handler (Eliminates 1 incorrect choice)
     fun triggerHintPerk() {
+        if (hasUsedPerkThisLevel) {
+            scope.launch { snackbarHostState.showSnackbar("Only 1 perk can be used per level!") }
+            return
+        }
         if (hintsCount > 0) {
             val used = AuthManager.useHint()
             if (used) {
+                hasUsedPerkThisLevel = true
                 hintsTriggeredCount++
                 val wrongChoices = levelData.choices.filter { it.id != levelData.correctNextSymbol.id && !eliminatedChoiceIds.contains(it.id) }
                 if (wrongChoices.isNotEmpty()) {
@@ -306,9 +313,14 @@ fun PatternGameScreen(
 
     // Show Again (Peek Pattern) Perk Handler
     fun triggerShowAgainPerk() {
+        if (hasUsedPerkThisLevel) {
+            scope.launch { snackbarHostState.showSnackbar("Only 1 perk can be used per level!") }
+            return
+        }
         if (showAgainCount > 0) {
             val used = AuthManager.useShowAgain()
             if (used) {
+                hasUsedPerkThisLevel = true
                 isPatternPreviewActive = true
                 previewTimeRemainingSeconds = 4 // Peek for 4 seconds
                 scope.launch {
@@ -322,9 +334,14 @@ fun PatternGameScreen(
 
     // Skip Level Perk Handler
     fun triggerSkipLevelPerk() {
+        if (hasUsedPerkThisLevel) {
+            scope.launch { snackbarHostState.showSnackbar("Only 1 perk can be used per level!") }
+            return
+        }
         if (skipLevelCount > 0) {
             val used = AuthManager.useSkipLevel()
             if (used) {
+                hasUsedPerkThisLevel = true
                 val timeElapsedMs = System.currentTimeMillis() - levelStartTime
                 levelTimeElapsedSeconds = timeElapsedMs / 1000
 
@@ -337,11 +354,11 @@ fun PatternGameScreen(
         }
     }
 
-    // Quick Buy Prompt Dialog when 0 perks remaining
+    // Quick Buy Prompt Dialog when 0 perks remaining (Direct in-game purchase for elders)
     if (showBuyPromptDialog != null) {
         val perkType = when (showBuyPromptDialog) {
             "hint" -> PerkType.HINT
-            "peek" -> PerkType.SHOW_AGAIN
+            "peek" -> PerkType.PEEK
             else -> PerkType.SKIP_LEVEL
         }
 
@@ -356,12 +373,13 @@ fun PatternGameScreen(
                             else -> Icons.Default.FastForward
                         },
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Get ${perkType.displayName}",
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                 }
             },
@@ -369,14 +387,15 @@ fun PatternGameScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = when (showBuyPromptDialog) {
-                            "hint" -> "You have 0 Extra Hints left. Purchase 1 Extra Hint for 1,000 Coins?"
-                            "peek" -> "You have 0 Show Again perks left. Purchase 1 Peek Perk for 800 Coins to reveal the pattern again?"
-                            else -> "You have 0 Skip Level perks left. Purchase 1 Skip Level for 2,000 Coins?"
-                        }
+                            "hint" -> "You have 0 Extra Hints left. Buy & Use 1 Extra Hint for 1,000 Coins?"
+                            "peek" -> "You have 0 Peek perks left. Buy & Use 1 Peek Perk for 800 Coins to reveal the pattern again?"
+                            else -> "You have 0 Skip Level perks left. Buy & Use 1 Skip Level for 2,000 Coins?"
+                        },
+                        style = MaterialTheme.typography.bodyMedium
                     )
                     Surface(
                         shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
                     ) {
                         Text(
                             text = "Your Balance: ${currentUser?.coins ?: 0} Coins",
@@ -391,22 +410,28 @@ fun PatternGameScreen(
                 Button(
                     onClick = {
                         val result = AuthManager.buyPerk(perkType)
+                        val dialogType = showBuyPromptDialog
                         showBuyPromptDialog = null
                         if (result.isSuccess) {
                             scope.launch {
                                 snackbarHostState.showSnackbar("Purchased 1 ${perkType.displayName}!")
                             }
-                            if (perkType == PerkType.SHOW_AGAIN) {
-                                triggerShowAgainPerk()
+                            when (dialogType) {
+                                "hint" -> triggerHintPerk()
+                                "peek" -> triggerShowAgainPerk()
+                                "skip" -> triggerSkipLevelPerk()
                             }
                         } else {
                             scope.launch {
                                 snackbarHostState.showSnackbar(result.exceptionOrNull()?.message ?: "Insufficient coins")
                             }
                         }
-                    }
+                    },
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Buy Now (${perkType.costCoins} Coins)")
+                    Icon(Icons.Default.ShoppingCart, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Buy & Use (${perkType.costCoins} Coins)", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -682,6 +707,7 @@ fun PatternGameScreen(
                         count = hintsCount,
                         cost = 1000,
                         color = MaterialTheme.colorScheme.secondary,
+                        disabled = hasUsedPerkThisLevel,
                         onClick = { triggerHintPerk() },
                         modifier = Modifier.weight(1f)
                     )
@@ -693,6 +719,7 @@ fun PatternGameScreen(
                         count = showAgainCount,
                         cost = 800,
                         color = MaterialTheme.colorScheme.primary,
+                        disabled = hasUsedPerkThisLevel,
                         onClick = { triggerShowAgainPerk() },
                         modifier = Modifier.weight(1f)
                     )
@@ -704,6 +731,7 @@ fun PatternGameScreen(
                         count = skipLevelCount,
                         cost = 2000,
                         color = MaterialTheme.colorScheme.tertiary,
+                        disabled = hasUsedPerkThisLevel,
                         onClick = { triggerSkipLevelPerk() },
                         modifier = Modifier.weight(1f)
                     )
@@ -948,14 +976,15 @@ private fun PerkBarButton(
     count: Int,
     cost: Int,
     color: Color,
+    disabled: Boolean = false,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
-        color = color.copy(alpha = 0.14f),
-        border = BorderStroke(1.dp, color.copy(alpha = 0.35f)),
+        color = if (disabled) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f) else color.copy(alpha = 0.14f),
+        border = BorderStroke(1.dp, if (disabled) MaterialTheme.colorScheme.outline.copy(alpha = 0.2f) else color.copy(alpha = 0.35f)),
         modifier = modifier.height(52.dp)
     ) {
         Row(

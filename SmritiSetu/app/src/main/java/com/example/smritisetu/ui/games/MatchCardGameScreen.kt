@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import com.example.smritisetu.data.AuthManager
 import com.example.smritisetu.data.CognitiveGameLog
 import com.example.smritisetu.data.LocalAppStrings
+import com.example.smritisetu.data.PerkType
 import com.example.smritisetu.theme.GlassCard
 import com.example.smritisetu.theme.getGlassGradientBrush
 import com.example.smritisetu.theme.isAppInDarkTheme
@@ -79,6 +80,7 @@ fun MatchCardGameScreen(
     val themeMode by AuthManager.themeMode.collectAsState()
     val currentUser by AuthManager.currentUser.collectAsState()
     val hintsCount by AuthManager.hintsCount.collectAsState()
+    val peekCount by AuthManager.peekCount.collectAsState()
     val skipLevelCount by AuthManager.skipLevelCount.collectAsState()
     val darkTheme = isAppInDarkTheme(themeMode)
     val strings = LocalAppStrings.current
@@ -91,6 +93,11 @@ fun MatchCardGameScreen(
     var showTimesUpDialog by remember { mutableStateOf(false) }
     var showBuyPromptDialog by remember { mutableStateOf<String?>(null) }
     var levelTimeElapsedSeconds by remember { mutableLongStateOf(0L) }
+
+    // 1 Perk Limit Per Level & Peek State
+    var hasUsedPerkThisLevel by remember(currentLevel) { mutableStateOf(false) }
+    var isPeekActive by remember(currentLevel) { mutableStateOf(false) }
+    var peekRemainingSeconds by remember(currentLevel) { mutableIntStateOf(4) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -187,6 +194,9 @@ fun MatchCardGameScreen(
         val initialPreviewMs = getInitialPreviewDurationMs(currentLevel)
         isInitialPreview = true
         previewRemainingSeconds = (initialPreviewMs / 1000).toInt().coerceAtLeast(1)
+        hasUsedPerkThisLevel = false
+        isPeekActive = false
+        peekRemainingSeconds = 4
         triesCount = 0
         hintsTriggeredCount = 0
         levelStartTime = System.currentTimeMillis()
@@ -231,6 +241,21 @@ fun MatchCardGameScreen(
                 isInitialPreview = false
                 levelStartTime = System.currentTimeMillis()
                 lastInteractionTime = System.currentTimeMillis()
+            }
+        }
+    }
+
+    // Peek Perk Re-reveal Countdown Coroutine (4 Seconds)
+    LaunchedEffect(isPeekActive) {
+        if (isPeekActive) {
+            var remaining = 4
+            while (remaining > 0 && isPeekActive) {
+                peekRemainingSeconds = remaining
+                delay(1000L)
+                remaining--
+            }
+            if (isPeekActive) {
+                isPeekActive = false
             }
         }
     }
@@ -284,16 +309,21 @@ fun MatchCardGameScreen(
 
     // Handle Hint Perk Trigger
     fun triggerHintPerk() {
+        if (hasUsedPerkThisLevel) {
+            scope.launch { snackbarHostState.showSnackbar("Only 1 perk can be used per level!") }
+            return
+        }
         if (hintsCount > 0) {
             val used = AuthManager.useHint()
             if (used) {
+                hasUsedPerkThisLevel = true
                 val unmatched = cards.filter { !it.isMatched }
                 if (unmatched.isNotEmpty()) {
                     val targetPairId = unmatched.first().pairId
                     cards = cards.map {
                         if (it.pairId == targetPairId) it.copy(isHighlighted = true) else it.copy(isHighlighted = false)
                     }
-                    scope.launch { snackbarHostState.showSnackbar(strings.hintActive) }
+                    scope.launch { snackbarHostState.showSnackbar("💡 ${strings.hintActive}") }
                 }
             }
         } else {
@@ -301,11 +331,35 @@ fun MatchCardGameScreen(
         }
     }
 
+    // Handle Peek Perk Trigger (Re-reveals all unmatched cards for 4 seconds)
+    fun triggerPeekPerk() {
+        if (hasUsedPerkThisLevel) {
+            scope.launch { snackbarHostState.showSnackbar("Only 1 perk can be used per level!") }
+            return
+        }
+        if (peekCount > 0) {
+            val used = AuthManager.usePeek()
+            if (used) {
+                hasUsedPerkThisLevel = true
+                isPeekActive = true
+                peekRemainingSeconds = 4
+                scope.launch { snackbarHostState.showSnackbar("👁️ Peek active: All cards revealed for 4 seconds!") }
+            }
+        } else {
+            showBuyPromptDialog = "peek"
+        }
+    }
+
     // Handle Skip Level Perk Trigger
     fun triggerSkipLevelPerk() {
+        if (hasUsedPerkThisLevel) {
+            scope.launch { snackbarHostState.showSnackbar("Only 1 perk can be used per level!") }
+            return
+        }
         if (skipLevelCount > 0) {
             val used = AuthManager.useSkipLevel()
             if (used) {
+                hasUsedPerkThisLevel = true
                 val timeElapsedMs = System.currentTimeMillis() - levelStartTime
                 levelTimeElapsedSeconds = timeElapsedMs / 1000
 
@@ -324,7 +378,7 @@ fun MatchCardGameScreen(
 
     // Handle Card Click
     fun onCardClick(card: CardItem) {
-        if (isInitialPreview || isProcessingMatch || card.isFlipped || card.isMatched || showTimesUpDialog || showVictoryDialog) return
+        if (isInitialPreview || isPeekActive || isProcessingMatch || card.isFlipped || card.isMatched || showTimesUpDialog || showVictoryDialog) return
 
         lastInteractionTime = System.currentTimeMillis()
 
@@ -399,42 +453,84 @@ fun MatchCardGameScreen(
         }
     }
 
-    // Quick Buy Prompt Dialog when 0 perks remaining
+    // Quick Buy Prompt Dialog when 0 perks remaining (Direct in-game purchase for elders)
     if (showBuyPromptDialog != null) {
+        val perkType = when (showBuyPromptDialog) {
+            "hint" -> PerkType.HINT
+            "peek" -> PerkType.PEEK
+            else -> PerkType.SKIP_LEVEL
+        }
+
         AlertDialog(
             onDismissRequest = { showBuyPromptDialog = null },
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = Icons.Default.Storefront,
+                        imageVector = when (showBuyPromptDialog) {
+                            "hint" -> Icons.Default.Lightbulb
+                            "peek" -> Icons.Default.Visibility
+                            else -> Icons.Default.FastForward
+                        },
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(28.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (showBuyPromptDialog == "hint") strings.buyHint else strings.buySkipLevel,
+                        text = "Get ${perkType.displayName}",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                 }
             },
             text = {
-                Text(
-                    text = if (showBuyPromptDialog == "hint") strings.noHintsLeft else strings.noSkipsLeft,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = when (showBuyPromptDialog) {
+                            "hint" -> "You have 0 Extra Hints left. Buy & Use 1 Extra Hint for 1,000 Coins?"
+                            "peek" -> "You have 0 Peek perks left. Buy & Use 1 Peek Perk for 800 Coins to reveal all cards for 4 seconds?"
+                            else -> "You have 0 Skip Level perks left. Buy & Use 1 Skip Level for 2,000 Coins?"
+                        },
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
+                    ) {
+                        Text(
+                            text = "Your Balance: ${currentUser?.coins ?: 0} Coins",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                        )
+                    }
+                }
             },
             confirmButton = {
                 Button(
                     onClick = {
+                        val result = AuthManager.buyPerk(perkType)
+                        val dialogType = showBuyPromptDialog
                         showBuyPromptDialog = null
-                        onNavigateToShop()
+                        if (result.isSuccess) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Purchased 1 ${perkType.displayName}!")
+                            }
+                            when (dialogType) {
+                                "hint" -> triggerHintPerk()
+                                "peek" -> triggerPeekPerk()
+                                "skip" -> triggerSkipLevelPerk()
+                            }
+                        } else {
+                            scope.launch {
+                                snackbarHostState.showSnackbar(result.exceptionOrNull()?.message ?: strings.insufficientCoins)
+                            }
+                        }
                     },
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(Icons.Default.ShoppingCart, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Visit Shop", fontWeight = FontWeight.Bold)
+                    Text("Buy & Use (${perkType.costCoins} Coins)", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -702,11 +798,11 @@ fun MatchCardGameScreen(
             )
         },
         bottomBar = {
-            // In-Game Bottom Perks Bar
+            // In-Game Bottom Perks Bar (Hint, Peek, Skip)
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
                 shape = RoundedCornerShape(22.dp),
                 color = if (darkTheme) Color(0xEB162421) else Color(0xEBFFFFFF),
                 border = BorderStroke(1.dp, if (darkTheme) Color(0x33FFFFFF) else Color(0x66FFFFFF)),
@@ -715,49 +811,73 @@ fun MatchCardGameScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Hint Perk Button
+                    // 1. Hint Perk Button
                     OutlinedButton(
                         onClick = { triggerHintPerk() },
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.weight(1f),
-                        border = BorderStroke(1.2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                        border = BorderStroke(1.2.dp, if (hasUsedPerkThisLevel) MaterialTheme.colorScheme.outline.copy(alpha = 0.3f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
                     ) {
                         Icon(
                             imageVector = Icons.Default.Lightbulb,
                             contentDescription = strings.useHint,
-                            modifier = Modifier.size(18.dp)
+                            tint = if (hasUsedPerkThisLevel) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "${strings.useHint} ($hintsCount)",
+                            text = "Hint ($hintsCount)",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
+                            fontSize = 11.sp
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(12.dp))
+                    // 2. Peek / Show Again Perk Button (800 Coins)
+                    OutlinedButton(
+                        onClick = { triggerPeekPerk() },
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                        border = BorderStroke(1.2.dp, if (hasUsedPerkThisLevel) MaterialTheme.colorScheme.outline.copy(alpha = 0.3f) else Color(0xFF00B4D8))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Visibility,
+                            contentDescription = "Peek",
+                            tint = if (hasUsedPerkThisLevel) MaterialTheme.colorScheme.outline else Color(0xFF00B4D8),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Peek ($peekCount)",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        )
+                    }
 
-                    // Skip Level Perk Button
+                    // 3. Skip Level Perk Button (2,000 Coins)
                     OutlinedButton(
                         onClick = { triggerSkipLevelPerk() },
                         shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.weight(1f),
-                        border = BorderStroke(1.2.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f))
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                        border = BorderStroke(1.2.dp, if (hasUsedPerkThisLevel) MaterialTheme.colorScheme.outline.copy(alpha = 0.3f) else MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f))
                     ) {
                         Icon(
                             imageVector = Icons.Default.FastForward,
                             contentDescription = strings.useSkip,
-                            modifier = Modifier.size(18.dp)
+                            tint = if (hasUsedPerkThisLevel) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "${strings.useSkip} ($skipLevelCount)",
+                            text = "Skip ($skipLevelCount)",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
+                            fontSize = 11.sp
                         )
                     }
                 }
@@ -846,6 +966,31 @@ fun MatchCardGameScreen(
                             )
                         }
                     }
+                } else if (isPeekActive) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF00B4D8).copy(alpha = 0.2f),
+                        border = BorderStroke(1.dp, Color(0xFF00B4D8))
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Visibility,
+                                contentDescription = null,
+                                tint = Color(0xFF00B4D8),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Peek Active: ${peekRemainingSeconds}s",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = if (darkTheme) Color(0xFF90E0EF) else Color(0xFF0077B6)
+                            )
+                        }
+                    }
                 } else if (cards.any { it.isHighlighted }) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Surface(
@@ -883,6 +1028,7 @@ fun MatchCardGameScreen(
                         FlippableCardTile(
                             card = card,
                             isProcessingMatch = isProcessingMatch,
+                            isPeekActive = isPeekActive,
                             hintPulseScale = hintPulseScale,
                             gridColumns = gridColumns,
                             darkTheme = darkTheme,
@@ -899,13 +1045,14 @@ fun MatchCardGameScreen(
 fun FlippableCardTile(
     card: CardItem,
     isProcessingMatch: Boolean,
+    isPeekActive: Boolean = false,
     hintPulseScale: Float,
     gridColumns: Int,
     darkTheme: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isRevealed = card.isFlipped || card.isMatched
+    val isRevealed = card.isFlipped || card.isMatched || isPeekActive
 
     // Animate rotation from 0f (back) to 180f (front)
     val rotation by animateFloatAsState(
@@ -938,7 +1085,7 @@ fun FlippableCardTile(
                 rotationY = rotation
                 cameraDistance = 14f * density
             }
-            .clickable(enabled = !isRevealed && !isProcessingMatch) {
+            .clickable(enabled = !isRevealed && !isProcessingMatch && !isPeekActive) {
                 onClick()
             },
         shape = RoundedCornerShape(16.dp),
