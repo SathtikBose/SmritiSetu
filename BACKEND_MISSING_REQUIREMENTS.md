@@ -33,6 +33,9 @@ public class User {
     private Integer skipLevelCount = 0; // Skip level perks in inventory
 
     @Column(nullable = false)
+    private Integer showAgainCount = 0; // Show again (peek pattern) perks in inventory
+
+    @Column(nullable = false)
     private Integer totalXp = 1450; // Lifetime Total Experience Points
 
     @Column(nullable = false)
@@ -141,7 +144,13 @@ public class User {
       "id": "PERK_HINT",
       "name": "Extra Hint",
       "costCoins": 1000,
-      "description": "Auto-highlights unmatched card pair"
+      "description": "Auto-highlights unmatched card pair or eliminates wrong pattern choices"
+    },
+    {
+      "id": "PERK_SHOW_AGAIN",
+      "name": "Show Again (Peek Pattern)",
+      "costCoins": 800,
+      "description": "Re-reveals hidden pattern sequence for 4 seconds during memorization games"
     },
     {
       "id": "PERK_SKIP",
@@ -159,18 +168,19 @@ public class User {
 - **Request Body**:
   ```json
   {
-    "perkType": "HINT" // "HINT" or "SKIP_LEVEL"
+    "perkType": "SHOW_AGAIN" // "HINT", "SHOW_AGAIN", or "SKIP_LEVEL"
   }
   ```
 - **Business Logic**:
-  - Verify user has sufficient coins (1,000 for HINT, 2,000 for SKIP_LEVEL).
-  - Deduct coins and increment `hintsCount` or `skipLevelCount`.
+  - Verify user has sufficient coins (1,000 for HINT, 800 for SHOW_AGAIN, 2,000 for SKIP_LEVEL).
+  - Deduct coins and increment `hintsCount`, `showAgainCount`, or `skipLevelCount`.
 - **Response `200 OK`**:
   ```json
   {
     "success": true,
-    "remainingCoins": 0,
-    "hintsCount": 1,
+    "remainingCoins": 200,
+    "hintsCount": 0,
+    "showAgainCount": 1,
     "skipLevelCount": 0
   }
   ```
@@ -182,7 +192,7 @@ public class User {
 - **Request Body**:
   ```json
   {
-    "perkType": "HINT" // or "SKIP_LEVEL"
+    "perkType": "SHOW_AGAIN" // "HINT", "SHOW_AGAIN", or "SKIP_LEVEL"
   }
   ```
 - **Response `200 OK`**:
@@ -267,10 +277,12 @@ public class User {
     "level": 4,
     "patternLength": 5,
     "difficulty": "EASY",
+    "previewDurationSec": 6,
     "timeLimitSec": 60,
     "timeTakenSec": 22,
     "triesCount": 1,
     "eliminatedChoicesCount": 0,
+    "showAgainUsedCount": 1,
     "skipped": false
   }
   ```
@@ -484,12 +496,12 @@ public class LeagueSeasonScheduler {
 
 ## 📌 5. Backend Developer Action Checklist
 
-- [ ] **Step 1**: Add `patientLinkCode`, `coins`, `hintsCount`, `skipLevelCount`, `totalXp`, `monthlyLeagueXp`, `leagueTier`, `lastSeasonResetMonth`, `phone`, `gender`, `age`, `avatarUri` to `User.java`.
+- [ ] **Step 1**: Add `patientLinkCode`, `coins`, `hintsCount`, `skipLevelCount`, `showAgainCount`, `totalXp`, `monthlyLeagueXp`, `leagueTier`, `lastSeasonResetMonth`, `phone`, `gender`, `age`, `avatarUri`, `highestUnlockedLevel`, `highestUnlockedPatternLevel` to `User.java`.
 - [ ] **Step 2**: Auto-generate unique `SM-XXXX` code on `POST /auth/register` for Patient accounts.
 - [ ] **Step 3**: Implement `POST /caregiver/link-by-code` and `GET /caregiver/patient/summary`.
-- [ ] **Step 4**: Implement `GET /shop/items`, `POST /shop/buy`, and `POST /user/perks/use`.
+- [ ] **Step 4**: Implement `GET /shop/items`, `POST /shop/buy`, and `POST /user/perks/use` (including `PERK_HINT` 1,000 coins, `PERK_SHOW_AGAIN` 800 coins, and `PERK_SKIP` 2,000 coins).
 - [ ] **Step 5**: Implement `POST /auth/change-password`.
-- [ ] **Step 6**: Update `LevelAttemptRequest` to accept `timeTakenMs`, `idleHintsCount`, `perkHintsCount`.
+- [ ] **Step 6**: Update `LevelAttemptRequest` to accept `timeTakenMs`, `idleHintsCount`, `perkHintsCount`, and Game 2 pattern telemetry (`previewDurationSec`, `showAgainUsedCount`).
 - [ ] **Step 7**: Configure `WebClient` / `RestTemplate` service to call AI model on port `8000` on every 5th level.
 - [ ] **Step 8**: Award **+15 XP** and **+200 Coins** in `GameService.processLevelAttempt`, incrementing `monthlyLeagueXp` and promoting `leagueTier`.
 - [ ] **Step 9**: Implement Date 1 Monthly League Reset Cron `@Scheduled(cron = "0 0 0 1 * ?")` and endpoints `GET /api/v1/league/status` and `GET /api/v1/league/leaderboard`.

@@ -131,6 +131,23 @@ class AuthManagerTest {
     }
 
     @Test
+    fun buyPerk_showAgain_deducts800Coins_andIncrementsCount() {
+        AuthManager.login("user@smritisetu.org", "pass")
+        assertEquals(1000, AuthManager.currentUser.value?.coins)
+        assertEquals(0, AuthManager.showAgainCount.value)
+
+        val result = AuthManager.buyPerk(PerkType.SHOW_AGAIN)
+        assertTrue(result.isSuccess)
+        assertEquals(200, AuthManager.currentUser.value?.coins)
+        assertEquals(1, AuthManager.showAgainCount.value)
+
+        // Using showAgain decrements count
+        assertTrue(AuthManager.useShowAgain())
+        assertEquals(0, AuthManager.showAgainCount.value)
+        assertFalse(AuthManager.useShowAgain())
+    }
+
+    @Test
     fun useHint_decrementsCountWhenAvailable() {
         AuthManager.login("user@smritisetu.org", "pass")
         // No hints initially
