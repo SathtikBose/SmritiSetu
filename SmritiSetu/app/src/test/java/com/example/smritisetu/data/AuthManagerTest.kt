@@ -303,4 +303,33 @@ class AuthManagerTest {
         assertEquals(0, AuthManager.monthlyLeagueXp.value)
         assertEquals(LeagueTier.BRONZE.tierName, AuthManager.currentUser.value?.leagueTier)
     }
+
+    @Test
+    fun defaultPatternLevels_firstFiveUnlocked() {
+        assertEquals(5, AuthManager.highestUnlockedPatternLevel.value)
+        assertTrue(AuthManager.isPatternLevelUnlocked(1))
+        assertTrue(AuthManager.isPatternLevelUnlocked(5))
+        assertFalse(AuthManager.isPatternLevelUnlocked(6))
+    }
+
+    @Test
+    fun unlockNextPatternLevel_incrementsWhenCurrentIsHighest() {
+        AuthManager.login("user@smritisetu.org", "pass")
+        assertEquals(5, AuthManager.highestUnlockedPatternLevel.value)
+
+        // Completing level 3 does not increment highest unlocked (remains 5)
+        AuthManager.unlockNextPatternLevel(3)
+        assertEquals(5, AuthManager.highestUnlockedPatternLevel.value)
+
+        // Completing level 5 unlocks level 6
+        AuthManager.unlockNextPatternLevel(5)
+        assertEquals(6, AuthManager.highestUnlockedPatternLevel.value)
+        assertTrue(AuthManager.isPatternLevelUnlocked(6))
+        assertFalse(AuthManager.isPatternLevelUnlocked(7))
+
+        // Completing level 6 unlocks level 7
+        AuthManager.unlockNextPatternLevel(6)
+        assertEquals(7, AuthManager.highestUnlockedPatternLevel.value)
+        assertTrue(AuthManager.isPatternLevelUnlocked(7))
+    }
 }

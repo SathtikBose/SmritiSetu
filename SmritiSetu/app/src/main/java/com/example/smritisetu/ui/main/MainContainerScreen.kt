@@ -41,6 +41,7 @@ fun MainContainerScreen(
     onNavigateToEditProfile: () -> Unit,
     onNavigateToAppearance: () -> Unit,
     onNavigateToLevelSelect: () -> Unit = {},
+    onNavigateToPatternLevelSelect: () -> Unit = {},
     onNavigateToShop: () -> Unit = {},
     onNavigateToCaregiverDashboard: () -> Unit = {},
     onLogout: () -> Unit,
@@ -66,7 +67,8 @@ fun MainContainerScreen(
             when (selectedTab) {
                 BottomNavTab.HOME -> HomeScreen(onNavigateToShop = onNavigateToShop)
                 BottomNavTab.GAMES -> GamesScreen(
-                    onPlayMatchCardGame = onNavigateToLevelSelect
+                    onPlayMatchCardGame = onNavigateToLevelSelect,
+                    onPlayPatternGame = onNavigateToPatternLevelSelect
                 )
                 BottomNavTab.LEAGUE -> LeagueScreen()
                 BottomNavTab.SETTINGS -> SettingsScreen(

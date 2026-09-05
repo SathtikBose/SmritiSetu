@@ -12,6 +12,8 @@ import com.example.smritisetu.ui.auth.SignupScreen
 import com.example.smritisetu.ui.caregiver.CaregiverDashboardScreen
 import com.example.smritisetu.ui.games.MatchCardGameScreen
 import com.example.smritisetu.ui.games.MatchCardLevelSelectScreen
+import com.example.smritisetu.ui.games.PatternGameLevelSelectScreen
+import com.example.smritisetu.ui.games.PatternGameScreen
 import com.example.smritisetu.ui.main.MainContainerScreen
 import com.example.smritisetu.ui.settings.AppAppearanceScreen
 import com.example.smritisetu.ui.settings.EditProfileScreen
@@ -59,6 +61,7 @@ fun MainNavigation() {
                         onNavigateToEditProfile = { backStack.add(EditProfileRoute) },
                         onNavigateToAppearance = { backStack.add(AppAppearanceRoute) },
                         onNavigateToLevelSelect = { backStack.add(MatchCardLevelSelectRoute) },
+                        onNavigateToPatternLevelSelect = { backStack.add(PatternGameLevelSelectRoute) },
                         onNavigateToShop = { backStack.add(ShopRoute) },
                         onNavigateToCaregiverDashboard = { backStack.add(CaregiverDashboardRoute) },
                         onLogout = {
@@ -97,6 +100,21 @@ fun MainNavigation() {
                 }
                 entry<MatchCardGameRoute> { route ->
                     MatchCardGameScreen(
+                        initialLevel = route.initialLevel,
+                        onNavigateToShop = { backStack.add(ShopRoute) },
+                        onNavigateBack = { backStack.removeLastOrNull() }
+                    )
+                }
+                entry<PatternGameLevelSelectRoute> {
+                    PatternGameLevelSelectScreen(
+                        onSelectLevel = { level ->
+                            backStack.add(PatternGameRoute(initialLevel = level))
+                        },
+                        onNavigateBack = { backStack.removeLastOrNull() }
+                    )
+                }
+                entry<PatternGameRoute> { route ->
+                    PatternGameScreen(
                         initialLevel = route.initialLevel,
                         onNavigateToShop = { backStack.add(ShopRoute) },
                         onNavigateBack = { backStack.removeLastOrNull() }

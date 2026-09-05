@@ -32,3 +32,10 @@ data object MatchCardLevelSelectRoute : NavKey
 
 @Serializable
 data class MatchCardGameRoute(val initialLevel: Int = 1) : NavKey
+
+@Serializable
+data object PatternGameLevelSelectRoute : NavKey
+
+@Serializable
+data class PatternGameRoute(val initialLevel: Int = 1) : NavKey
+
