@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: smritisetu-ai-model
+    env: python
+    rootDir: model
+    buildCommand: pip install -r requirements.txt && python -c "from predictor import DifficultyPredictor; DifficultyPredictor()"
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.8

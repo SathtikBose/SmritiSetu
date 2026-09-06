@@ -100,12 +100,25 @@ class TestModelInference:
 
 
 class TestApiEndpoints:
+    def test_root_endpoint(self):
+        response = client.get("/")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "online"
+        assert data["health_check"] == "/health"
+
     def test_health_endpoint(self):
         response = client.get("/health")
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "healthy"
         assert data["model_loaded"] is True
+
+    def test_healthz_endpoint(self):
+        response = client.get("/healthz")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "healthy"
 
     def test_predict_difficulty_endpoint(self):
         payload = {
