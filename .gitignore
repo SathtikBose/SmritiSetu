@@ -62,5 +62,3 @@ yarn-error.*
 !.env.example
 .env*.local
 
-# Local Spring Boot configuration
-**/src/main/resources/application.properties
