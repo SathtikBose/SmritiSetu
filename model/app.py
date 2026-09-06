@@ -29,6 +29,20 @@ app.add_middleware(
 predictor = DifficultyPredictor()
 
 
+@app.get("/", tags=["System"])
+def root():
+    """
+    Root endpoint for service discovery and quick verification.
+    """
+    return {
+        "service": "SmritiSetu Cognitive Difficulty Predictor API",
+        "status": "online",
+        "health_check": "/health",
+        "docs": "/docs",
+        "version": "1.0.0"
+    }
+
+
 @app.get("/health", tags=["System"])
 def health_check():
     """
@@ -40,6 +54,14 @@ def health_check():
         "model_loaded": predictor.model is not None,
         "version": "1.0.0"
     }
+
+
+@app.get("/healthz", tags=["System"])
+def healthz():
+    """
+    Kubernetes / Render healthz probe alias.
+    """
+    return health_check()
 
 
 @app.post(
@@ -84,5 +106,8 @@ def batch_predict(batch_request: BatchPredictionRequest):
 
 
 if __name__ == "__main__":
+    import os
     import uvicorn
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("app:app", host="0.0.0.0", port=port, reload=False)
+
