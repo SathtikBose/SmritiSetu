@@ -65,7 +65,12 @@ fun MainContainerScreen(
                 .padding(bottom = 88.dp)
         ) {
             when (selectedTab) {
-                BottomNavTab.HOME -> HomeScreen(onNavigateToShop = onNavigateToShop)
+                BottomNavTab.HOME -> HomeScreen(
+                    onNavigateToShop = onNavigateToShop,
+                    onNavigateToMatchLevelSelect = onNavigateToLevelSelect,
+                    onNavigateToPatternLevelSelect = onNavigateToPatternLevelSelect,
+                    onNavigateToLeague = { selectedTab = BottomNavTab.LEAGUE }
+                )
                 BottomNavTab.GAMES -> GamesScreen(
                     onPlayMatchCardGame = onNavigateToLevelSelect,
                     onPlayPatternGame = onNavigateToPatternLevelSelect

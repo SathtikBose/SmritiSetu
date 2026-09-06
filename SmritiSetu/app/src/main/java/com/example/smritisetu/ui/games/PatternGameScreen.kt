@@ -78,7 +78,6 @@ fun PatternGameScreen(
     val themeMode by AuthManager.themeMode.collectAsState()
     val currentUser by AuthManager.currentUser.collectAsState()
     val hintsCount by AuthManager.hintsCount.collectAsState()
-    val showAgainCount by AuthManager.showAgainCount.collectAsState()
     val skipLevelCount by AuthManager.skipLevelCount.collectAsState()
     val darkTheme = isAppInDarkTheme(themeMode)
     val strings = LocalAppStrings.current
@@ -94,17 +93,6 @@ fun PatternGameScreen(
     var eliminatedChoiceIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var selectedWrongChoiceId by remember { mutableStateOf<Int?>(null) }
     var isSuccessAnimation by remember { mutableStateOf(false) }
-
-    fun getPreviewDurationForLevel(level: Int): Int {
-        return when {
-            level <= 5 -> 6 // Easy: 6 seconds to memorize
-            level <= 10 -> 4 // Normal: 4 seconds
-            else -> 3 // Hard: 3 seconds
-        }
-    }
-
-    var isPatternPreviewActive by remember { mutableStateOf(true) }
-    var previewTimeRemainingSeconds by remember { mutableIntStateOf(getPreviewDurationForLevel(initialLevel)) }
     var hasUsedPerkThisLevel by remember(currentLevel) { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -151,7 +139,7 @@ fun PatternGameScreen(
                 if (isDoubleStep) {
                     val symA = shuffledPool[0]
                     val symB = shuffledPool[1]
-                    val patternTemplate = listOf(symA, symA, symB, symB)
+                    val patternTemplate = listOf(symA, symB, symA, symB)
                     val sequenceLength = 6
                     val fullSequence = (0 until sequenceLength).map { patternTemplate[it % 4] }
                     val correctNext = patternTemplate[sequenceLength % 4]
@@ -201,8 +189,6 @@ fun PatternGameScreen(
         hasUsedPerkThisLevel = false
         levelStartTime = System.currentTimeMillis()
         timeRemainingSeconds = getTimeLimitForLevel(currentLevel)
-        isPatternPreviewActive = true
-        previewTimeRemainingSeconds = getPreviewDurationForLevel(currentLevel)
         showVictoryDialog = false
         showTimesUpDialog = false
         showBuyPromptDialog = null
@@ -216,27 +202,12 @@ fun PatternGameScreen(
         resetCurrentLevel()
     }
 
-    // Pattern Preview Countdown (Memorization phase)
-    LaunchedEffect(currentLevel, isPatternPreviewActive, showVictoryDialog, showTimesUpDialog) {
-        if (isPatternPreviewActive && !showVictoryDialog && !showTimesUpDialog) {
-            while (previewTimeRemainingSeconds > 0) {
-                delay(1000L)
-                if (isPatternPreviewActive && !showVictoryDialog && !showTimesUpDialog) {
-                    previewTimeRemainingSeconds--
-                    if (previewTimeRemainingSeconds <= 0) {
-                        isPatternPreviewActive = false
-                    }
-                }
-            }
-        }
-    }
-
-    // Main Game Countdown Timer (Runs only after pattern is hidden)
-    LaunchedEffect(currentLevel, isPatternPreviewActive, showVictoryDialog, showTimesUpDialog) {
-        if (!isPatternPreviewActive && !showVictoryDialog && !showTimesUpDialog) {
+    // Main Game Countdown Timer
+    LaunchedEffect(currentLevel, showVictoryDialog, showTimesUpDialog) {
+        if (!showVictoryDialog && !showTimesUpDialog) {
             while (timeRemainingSeconds > 0) {
                 delay(1000L)
-                if (!isPatternPreviewActive && !showVictoryDialog && !showTimesUpDialog) {
+                if (!showVictoryDialog && !showTimesUpDialog) {
                     timeRemainingSeconds--
                     if (timeRemainingSeconds <= 0) {
                         showTimesUpDialog = true
@@ -248,7 +219,7 @@ fun PatternGameScreen(
 
     // Handle Choice Selection
     fun onChoiceSelected(symbol: PatternSymbol) {
-        if (isPatternPreviewActive || isSuccessAnimation || showVictoryDialog || showTimesUpDialog || eliminatedChoiceIds.contains(symbol.id)) return
+        if (isSuccessAnimation || showVictoryDialog || showTimesUpDialog || eliminatedChoiceIds.contains(symbol.id)) return
 
         if (symbol.id == levelData.correctNextSymbol.id) {
             // Correct Choice!
@@ -311,27 +282,6 @@ fun PatternGameScreen(
         }
     }
 
-    // Show Again (Peek Pattern) Perk Handler
-    fun triggerShowAgainPerk() {
-        if (hasUsedPerkThisLevel) {
-            scope.launch { snackbarHostState.showSnackbar("Only 1 perk can be used per level!") }
-            return
-        }
-        if (showAgainCount > 0) {
-            val used = AuthManager.useShowAgain()
-            if (used) {
-                hasUsedPerkThisLevel = true
-                isPatternPreviewActive = true
-                previewTimeRemainingSeconds = 4 // Peek for 4 seconds
-                scope.launch {
-                    snackbarHostState.showSnackbar("👁️ Peek activated! Pattern re-revealed for 4 seconds.")
-                }
-            }
-        } else {
-            showBuyPromptDialog = "peek"
-        }
-    }
-
     // Skip Level Perk Handler
     fun triggerSkipLevelPerk() {
         if (hasUsedPerkThisLevel) {
@@ -358,7 +308,6 @@ fun PatternGameScreen(
     if (showBuyPromptDialog != null) {
         val perkType = when (showBuyPromptDialog) {
             "hint" -> PerkType.HINT
-            "peek" -> PerkType.PEEK
             else -> PerkType.SKIP_LEVEL
         }
 
@@ -369,7 +318,6 @@ fun PatternGameScreen(
                     Icon(
                         imageVector = when (showBuyPromptDialog) {
                             "hint" -> Icons.Default.Lightbulb
-                            "peek" -> Icons.Default.Visibility
                             else -> Icons.Default.FastForward
                         },
                         contentDescription = null,
@@ -388,7 +336,6 @@ fun PatternGameScreen(
                     Text(
                         text = when (showBuyPromptDialog) {
                             "hint" -> "You have 0 Extra Hints left. Buy & Use 1 Extra Hint for 1,000 Coins?"
-                            "peek" -> "You have 0 Peek perks left. Buy & Use 1 Peek Perk for 800 Coins to reveal the pattern again?"
                             else -> "You have 0 Skip Level perks left. Buy & Use 1 Skip Level for 2,000 Coins?"
                         },
                         style = MaterialTheme.typography.bodyMedium
@@ -418,7 +365,6 @@ fun PatternGameScreen(
                             }
                             when (dialogType) {
                                 "hint" -> triggerHintPerk()
-                                "peek" -> triggerShowAgainPerk()
                                 "skip" -> triggerSkipLevelPerk()
                             }
                         } else {
@@ -697,10 +643,10 @@ fun PatternGameScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 1. Hint Perk
+                    // 1. Hint Perk (Eliminates 1 wrong option)
                     PerkBarButton(
                         icon = Icons.Default.Lightbulb,
                         title = "Hint",
@@ -712,19 +658,7 @@ fun PatternGameScreen(
                         modifier = Modifier.weight(1f)
                     )
 
-                    // 2. Show Again (Peek) Perk
-                    PerkBarButton(
-                        icon = Icons.Default.Visibility,
-                        title = "Peek",
-                        count = showAgainCount,
-                        cost = 800,
-                        color = MaterialTheme.colorScheme.primary,
-                        disabled = hasUsedPerkThisLevel,
-                        onClick = { triggerShowAgainPerk() },
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    // 3. Skip Level Perk
+                    // 2. Skip Level Perk
                     PerkBarButton(
                         icon = Icons.Default.FastForward,
                         title = "Skip",
@@ -754,7 +688,7 @@ fun PatternGameScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // Timer & Preview Indicator Bar
+                // Timer Indicator Bar
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -763,7 +697,7 @@ fun PatternGameScreen(
                     // Timer pill
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = if (timeRemainingSeconds <= 10 && !isPatternPreviewActive) MaterialTheme.colorScheme.errorContainer
+                        color = if (timeRemainingSeconds <= 10) MaterialTheme.colorScheme.errorContainer
                         else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
                     ) {
                         Row(
@@ -773,45 +707,44 @@ fun PatternGameScreen(
                             Icon(
                                 imageVector = Icons.Default.Timer,
                                 contentDescription = null,
-                                tint = if (timeRemainingSeconds <= 10 && !isPatternPreviewActive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                                tint = if (timeRemainingSeconds <= 10) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (isPatternPreviewActive) "Ready: ${timeRemainingSeconds}s" else "${timeRemainingSeconds}s",
+                                text = "${timeRemainingSeconds}s",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                color = if (timeRemainingSeconds <= 10 && !isPatternPreviewActive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                                color = if (timeRemainingSeconds <= 10) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
 
-                    // Memorization / Recall State Badge
+                    // Pattern Recognition Badge
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = if (isPatternPreviewActive) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
-                        else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.9f)
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
                             Icon(
-                                imageVector = if (isPatternPreviewActive) Icons.Default.Visibility else Icons.Default.Psychology,
+                                imageVector = Icons.Default.Psychology,
                                 contentDescription = null,
-                                tint = if (isPatternPreviewActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (isPatternPreviewActive) "Memorize: ${previewTimeRemainingSeconds}s" else "Recall Active",
+                                text = "Pattern Recall",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                color = if (isPatternPreviewActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
                     }
                 }
 
-                // Dynamic Prompt Banner
+                // Prompt Banner
                 GlassCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
@@ -822,20 +755,14 @@ fun PatternGameScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = if (isPatternPreviewActive)
-                                "👁️ Memorize the pattern before it disappears!"
-                            else
-                                "🧠 What comes next in the sequence?",
+                            text = "🧠 What comes next in the sequence?",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = if (isPatternPreviewActive)
-                                "Carefully observe the order of symbols ($previewTimeRemainingSeconds seconds remaining)"
-                            else
-                                "Select the missing symbol from memory before the time runs out.",
+                            text = "Observe the order of symbols and choose the missing piece.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
@@ -843,7 +770,7 @@ fun PatternGameScreen(
                     }
                 }
 
-                // Pattern Sequence Area (Shows real symbols during preview, mystery hidden tiles during guessing)
+                // Pattern Sequence Area (Always Visible)
                 GlassCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(24.dp),
@@ -862,18 +789,12 @@ fun PatternGameScreen(
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Render sequence items
+                            // Render sequence items (always visible)
                             levelData.sequence.forEachIndexed { index, symbol ->
-                                if (isPatternPreviewActive || isSuccessAnimation) {
-                                    PatternItemTile(
-                                        symbol = symbol,
-                                        stepNumber = index + 1
-                                    )
-                                } else {
-                                    PatternHiddenTile(
-                                        stepNumber = index + 1
-                                    )
-                                }
+                                PatternItemTile(
+                                    symbol = symbol,
+                                    stepNumber = index + 1
+                                )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
@@ -927,18 +848,10 @@ fun PatternGameScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = if (isPatternPreviewActive) "Memorizing sequence..." else "Select what comes next:",
+                        text = "Select what comes next:",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onBackground
                     )
-
-                    if (isPatternPreviewActive) {
-                        Text(
-                            text = "Unlocks in ${previewTimeRemainingSeconds}s",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
                 }
 
                 // Choices Grid: 2 columns with large, high-contrast touch targets
@@ -958,7 +871,7 @@ fun PatternGameScreen(
                             symbol = symbol,
                             isEliminated = isEliminated,
                             isSelectedWrong = isSelectedWrong,
-                            enabled = !isPatternPreviewActive && !isEliminated,
+                            enabled = !isEliminated,
                             onClick = { onChoiceSelected(symbol) },
                             darkTheme = darkTheme
                         )
@@ -1044,37 +957,6 @@ private fun PatternItemTile(
                 contentDescription = symbol.name,
                 tint = symbolColor,
                 modifier = Modifier.size(34.dp)
-            )
-        }
-        Text(
-            text = "#$stepNumber",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun PatternHiddenTile(
-    stepNumber: Int
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                .padding(8.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.HelpOutline,
-                contentDescription = "Hidden #$stepNumber",
-                tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
-                modifier = Modifier.size(28.dp)
             )
         }
         Text(

@@ -29,10 +29,10 @@ app.add_middleware(
 predictor = DifficultyPredictor()
 
 
-@app.get("/", tags=["System"])
+@app.api_route("/", methods=["GET", "HEAD", "POST"], tags=["System"])
 def root():
     """
-    Root endpoint for service discovery and quick verification.
+    Root endpoint for service discovery, uptime monitoring, and quick verification.
     """
     return {
         "service": "SmritiSetu Cognitive Difficulty Predictor API",
@@ -43,10 +43,11 @@ def root():
     }
 
 
-@app.get("/health", tags=["System"])
+@app.api_route("/health", methods=["GET", "HEAD", "POST"], tags=["System"])
 def health_check():
     """
     Health check endpoint to verify microservice status and model readiness.
+    Supports GET, HEAD, and POST for compatibility with all uptime monitors (UptimeRobot, Pingdom, etc.).
     """
     return {
         "status": "healthy",
@@ -56,14 +57,44 @@ def health_check():
     }
 
 
-@app.get("/healthz", tags=["System"])
+@app.api_route("/healthz", methods=["GET", "HEAD", "POST"], tags=["System"])
 def healthz():
     """
-    Kubernetes / Render healthz probe alias.
+    Kubernetes / Render / Cloud healthz probe alias.
     """
     return health_check()
 
 
+@app.api_route("/ping", methods=["GET", "HEAD", "POST"], tags=["System"])
+def ping():
+    """
+    Simple ping endpoint for uptime monitors.
+    """
+    return {"ping": "pong", "status": "ok"}
+
+
+@app.get("/predict", tags=["Prediction"])
+@app.head("/predict", tags=["Prediction"])
+@app.get("/predict_difficulty", tags=["Prediction"])
+@app.head("/predict_difficulty", tags=["Prediction"])
+def predict_info():
+    """
+    Informational endpoint when GET/HEAD is sent to prediction routes (prevents 405 for monitors).
+    """
+    return {
+        "service": "SmritiSetu Difficulty Prediction API",
+        "status": "ready",
+        "method": "POST",
+        "message": "Send a POST request with player telemetry JSON to get difficulty prediction."
+    }
+
+
+@app.post(
+    "/predict",
+    response_model=PredictionResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["Prediction"]
+)
 @app.post(
     "/predict_difficulty",
     response_model=PredictionResponse,
@@ -110,4 +141,5 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("app:app", host="0.0.0.0", port=port, reload=False)
+
 
