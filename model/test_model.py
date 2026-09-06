@@ -108,17 +108,43 @@ class TestApiEndpoints:
         assert data["health_check"] == "/health"
 
     def test_health_endpoint(self):
+        # Test GET
         response = client.get("/health")
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "healthy"
         assert data["model_loaded"] is True
 
+        # Test HEAD (UptimeRobot default)
+        head_resp = client.head("/health")
+        assert head_resp.status_code == 200
+
+        # Test POST
+        post_resp = client.post("/health")
+        assert post_resp.status_code == 200
+
     def test_healthz_endpoint(self):
         response = client.get("/healthz")
         assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "healthy"
+        head_resp = client.head("/healthz")
+        assert head_resp.status_code == 200
+
+    def test_ping_endpoint(self):
+        response = client.get("/ping")
+        assert response.status_code == 200
+        assert response.json()["ping"] == "pong"
+        head_resp = client.head("/ping")
+        assert head_resp.status_code == 200
+
+    def test_predict_info_get_and_head(self):
+        # Tests that GET / HEAD on /predict or /predict_difficulty return 200 OK (never 405)
+        for path in ["/predict", "/predict_difficulty"]:
+            get_resp = client.get(path)
+            assert get_resp.status_code == 200
+            assert get_resp.json()["status"] == "ready"
+
+            head_resp = client.head(path)
+            assert head_resp.status_code == 200
 
     def test_predict_difficulty_endpoint(self):
         payload = {
@@ -133,11 +159,14 @@ class TestApiEndpoints:
                 {"level": 5, "time_taken_ms": 45000, "tries_count": 7, "total_cards": 12, "perk_hints_used": 0, "idle_hints_triggered": 1}
             ]
         }
-        response = client.post("/predict_difficulty", json=payload)
-        assert response.status_code == 200
-        data = response.json()
-        assert "predicted_difficulty" in data
-        assert "confidence_score" in data
-        assert "suggested_parameters" in data
-        assert data["suggested_parameters"]["time_limit_seconds"] in [50, 100, 150]
-        assert "applied_for_levels" in data
+        # Test both /predict and /predict_difficulty
+        for endpoint in ["/predict", "/predict_difficulty"]:
+            response = client.post(endpoint, json=payload)
+            assert response.status_code == 200
+            data = response.json()
+            assert "predicted_difficulty" in data
+            assert "confidence_score" in data
+            assert "suggested_parameters" in data
+            assert data["suggested_parameters"]["time_limit_seconds"] in [50, 100, 150]
+            assert "applied_for_levels" in data
+
