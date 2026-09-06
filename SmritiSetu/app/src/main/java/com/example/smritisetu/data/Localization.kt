@@ -82,6 +82,8 @@ data class AppStrings(
     val game1Title: String,
     val game1Desc: String,
     val game1Tag: String,
+    val game2Title: String = "Guess the Pattern",
+    val game2Desc: String = "Observe patterns and guess what comes next.",
 
     // Game 1: Match The Card & Level Selector
     val matchTheCard: String,

@@ -126,9 +126,9 @@ fun MatchCardGameScreen(
 
     fun getIdleHintThresholdForLevel(level: Int): Long {
         return when {
-            level <= 5 -> 5000L // 5 seconds on early levels
-            level <= 10 -> 6000L // 6 seconds
-            else -> 7000L // 7 seconds on harder levels
+            level <= 5 -> 10000L // 10 seconds on early levels
+            level <= 10 -> 12000L // 12 seconds on normal levels
+            else -> 15000L // 15 seconds on harder levels
         }
     }
 

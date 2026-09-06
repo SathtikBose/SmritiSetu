@@ -356,10 +356,60 @@ public class LevelAttemptResponse {
 }
 ```
 
-### C. Connect to Python AI Model (`POST http://localhost:8000/predict_difficulty`)
+### C. Connect to Python AI Microservice (Hosted on Render)
+
+* **Production Live AI URL**: `https://smritisetuai.onrender.com`
+* **Local Development Fallback**: `http://localhost:8000`
+* **Health Check & Readiness Endpoints**:
+  * `GET https://smritisetuai.onrender.com/` (Service Info)
+  * `GET https://smritisetuai.onrender.com/health` (Liveness & Health Status)
+  * `GET https://smritisetuai.onrender.com/healthz` (Kubernetes/Cloud Readiness)
+* **Prediction Route**: `POST https://smritisetuai.onrender.com/predict` (or `POST https://smritisetuai.onrender.com/predict_difficulty`)
+
+#### Spring Boot `application.yml` Configuration:
+```yaml
+ai:
+  service:
+    base-url: ${AI_SERVICE_URL:https://smritisetuai.onrender.com}
+    timeout-seconds: 10
+```
+
+#### Spring Boot `WebClient` Integration:
+```java
+@Service
+@Slf4j
+public class CognitiveAiService {
+
+    private final WebClient webClient;
+
+    public CognitiveAiService(@Value("${ai.service.base-url}") String aiBaseUrl) {
+        this.webClient = WebClient.builder()
+                .baseUrl(aiBaseUrl)
+                .build();
+    }
+
+    public CognitivePredictionResponse getDifficultyPrediction(CognitiveTelemetryPayload payload) {
+        try {
+            return webClient.post()
+                    .uri("/predict")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(payload)
+                    .retrieve()
+                    .bodyToMono(CognitivePredictionResponse.class)
+                    .timeout(Duration.ofSeconds(10))
+                    .block();
+        } catch (Exception ex) {
+            log.warn("AI Service call failed (falling back to deterministic rule): {}", ex.getMessage());
+            return fallbackDifficulty(payload);
+        }
+    }
+}
+```
+
+#### Telemetry Flow:
 When a user completes **every 5th level** (e.g. Level 5, 10, 15, 20...):
 1. Query the last 5 level attempts for this user from `level_attempts` table.
-2. Send HTTP POST request via `RestTemplate` or `WebClient` to `http://localhost:8000/predict_difficulty`:
+2. Send HTTP POST request via `CognitiveAiService` to `https://smritisetuai.onrender.com/predict`:
    ```json
    {
      "user_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
