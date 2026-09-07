@@ -18,4 +18,9 @@ public class RegisterRequest {
     @NotBlank private String name;
     private Role role;
     private String preferredLanguage;
+    private String patientCode;
+    private Integer age;
+    private String gender;
+    private String phone;
 }
+

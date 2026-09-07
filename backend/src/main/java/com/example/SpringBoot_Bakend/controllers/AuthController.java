@@ -34,6 +34,7 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
+    private final com.example.SpringBoot_Bakend.service.CaregiverService caregiverService;
 
     @Value("${spring.security.oauth2.client.registration.google.client-id:}")
     private String googleClientId;
@@ -48,23 +49,50 @@ public class AuthController {
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
+        Role selectedRole = request.getRole() != null ? request.getRole() : Role.PATIENT;
+        String pCode = request.getPatientCode() != null && !request.getPatientCode().isBlank() 
+                ? request.getPatientCode().trim().toUpperCase() : null;
+
         // Create user via LOCAL auth
         User user = User.builder()
                 .username(request.getUsername())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .name(request.getName())
-                .role(request.getRole() != null ? request.getRole() : Role.PATIENT)
+                .role(selectedRole)
                 .authProvider(AuthProvider.LOCAL)
                 .preferredLanguage(request.getPreferredLanguage() != null ? request.getPreferredLanguage() : "en")
+                .age(request.getAge())
+                .gender(request.getGender())
+                .phone(request.getPhone())
+                .coins(0)
+                .hintsCount(3)
+                .skipLevelCount(1)
+                .showAgainCount(1)
+                .totalXp(0)
+                .monthlyLeagueXp(0)
+                .highestUnlockedLevel(1)
+                .highestUnlockedPatternLevel(1)
+                .streakDays(1)
+                .linkedPatientCode(selectedRole == Role.CAREGIVER ? pCode : null)
                 .build();
 
-        userRepository.save(user);
+        user = userRepository.save(user);
+
+        // Auto-link caregiver if patientCode provided
+        if (selectedRole == Role.CAREGIVER && pCode != null) {
+            try {
+                caregiverService.linkPatientByCode(user.getId(), pCode);
+                user = userRepository.findById(user.getId()).orElse(user);
+            } catch (Exception ignored) {
+            }
+        }
 
         // Generate token
         String jwtToken = jwtUtil.generateToken(user);
 
         return ResponseEntity.ok(toAuthResponse(user, jwtToken));
     }
+
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest request) {
@@ -162,11 +190,19 @@ public class AuthController {
                         .monthlyLeagueXp(0)
                         .highestUnlockedLevel(1)
                         .highestUnlockedPatternLevel(1)
-                        .streakDays(1)
                         .linkedPatientCode(selectedRole == Role.CAREGIVER && request.getPatientCode() != null ? request.getPatientCode().trim().toUpperCase() : null)
                         .build();
 
                 user = userRepository.save(user);
+            }
+
+            // Auto-link caregiver if patientCode provided
+            if (user.getRole() == Role.CAREGIVER && request.getPatientCode() != null && !request.getPatientCode().isBlank()) {
+                try {
+                    caregiverService.linkPatientByCode(user.getId(), request.getPatientCode().trim().toUpperCase());
+                    user = userRepository.findById(user.getId()).orElse(user);
+                } catch (Exception ignored) {
+                }
             }
 
             // 5. Generate secure JWT token
