@@ -10,12 +10,34 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import com.example.SpringBoot_Bakend.service.CloudinaryService;
+import org.springframework.web.multipart.MultipartFile;
+
 @RestController @RequestMapping("/user") @RequiredArgsConstructor
 public class UserController {
     private final UserRepository userRepository;
+    private final CloudinaryService cloudinaryService;
 
     @GetMapping("/profile")
     public ResponseEntity<UserProfileResponse> profile(@AuthenticationPrincipal User user) { return ResponseEntity.ok(toResponse(user)); }
+
+    @PostMapping("/avatar/upload")
+    public ResponseEntity<?> uploadAvatar(
+            @AuthenticationPrincipal User user,
+            @RequestParam("file") MultipartFile file
+    ) {
+        try {
+            String avatarUrl = cloudinaryService.uploadAvatar(file, user.getId().toString());
+            if (avatarUrl == null || avatarUrl.trim().isEmpty()) {
+                return ResponseEntity.internalServerError().body(java.util.Map.of("error", "Failed to upload avatar to Cloudinary"));
+            }
+            user.setAvatarUri(avatarUrl);
+            userRepository.save(user);
+            return ResponseEntity.ok(toResponse(user));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", "Avatar upload failed: " + e.getMessage()));
+        }
+    }
 
     @PutMapping("/profile")
     public ResponseEntity<UserProfileResponse> updateProfile(@AuthenticationPrincipal User user, @Valid @RequestBody UpdateProfileRequest request) {

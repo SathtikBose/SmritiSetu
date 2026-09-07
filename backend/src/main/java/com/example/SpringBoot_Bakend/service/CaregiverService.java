@@ -33,11 +33,18 @@ public class CaregiverService {
         if (caregiverId.equals(patientId)) throw new IllegalArgumentException("A caregiver cannot link to their own account.");
         User patient = userRepository.findById(patientId).orElseThrow(() -> new IllegalArgumentException("Patient not found."));
         if (patient.getRole() != Role.PATIENT) throw new IllegalArgumentException("The linked account must have the PATIENT role.");
+        
+        User caregiver = userRepository.findById(caregiverId).orElseThrow(() -> new IllegalArgumentException("Caregiver not found."));
+        if (caregiver.getLinkedPatientCode() != null && !caregiver.getLinkedPatientCode().trim().isEmpty()) {
+            if (!caregiver.getLinkedPatientCode().equalsIgnoreCase(patient.getPatientLinkCode())) {
+                throw new IllegalStateException("Caregiver is already permanently linked to patient " + caregiver.getLinkedPatientCode() + " and cannot be changed.");
+            }
+        }
+        
         if (linkRepository.findByPatientId(patientId).isPresent() && !linkRepository.existsByCaregiverIdAndPatientId(caregiverId, patientId)) {
-            throw new IllegalStateException("This patient is already linked to another caregiver in the demo.");
+            throw new IllegalStateException("This patient is already permanently linked to another caregiver.");
         }
         if (!linkRepository.existsByCaregiverIdAndPatientId(caregiverId, patientId)) {
-            User caregiver = userRepository.findById(caregiverId).orElseThrow();
             caregiver.setLinkedPatientCode(patient.getPatientLinkCode());
             userRepository.save(caregiver);
             linkRepository.save(CaregiverLink.builder().caregiver(caregiver).patient(patient).build());
@@ -48,13 +55,23 @@ public class CaregiverService {
         if (linkCode == null || linkCode.trim().isEmpty()) {
             throw new IllegalArgumentException("Patient link code is required.");
         }
-        User patient = userRepository.findByPatientLinkCode(linkCode.trim())
+        User patient = userRepository.findByPatientLinkCode(linkCode.trim().toUpperCase())
                 .orElseThrow(() -> new IllegalArgumentException("No patient found with code: " + linkCode));
         if (patient.getId().equals(caregiverId)) {
             throw new IllegalArgumentException("A caregiver cannot link to their own account.");
         }
         User caregiver = userRepository.findById(caregiverId)
                 .orElseThrow(() -> new IllegalArgumentException("Caregiver not found."));
+
+        if (caregiver.getLinkedPatientCode() != null && !caregiver.getLinkedPatientCode().trim().isEmpty()) {
+            if (!caregiver.getLinkedPatientCode().equalsIgnoreCase(patient.getPatientLinkCode())) {
+                throw new IllegalStateException("Caregiver is already permanently linked to patient " + caregiver.getLinkedPatientCode() + " and cannot be changed.");
+            }
+        }
+
+        if (linkRepository.findByPatientId(patient.getId()).isPresent() && !linkRepository.existsByCaregiverIdAndPatientId(caregiverId, patient.getId())) {
+            throw new IllegalStateException("This patient is already permanently linked to another caregiver.");
+        }
 
         caregiver.setLinkedPatientCode(patient.getPatientLinkCode());
         userRepository.save(caregiver);

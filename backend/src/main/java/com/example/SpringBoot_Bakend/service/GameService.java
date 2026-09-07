@@ -54,9 +54,21 @@ public class GameService {
         int timeTaken = request.getEffectiveTimeTakenSec();
         int tries = request.getEffectiveTriesCount();
 
-        // Calculate XP (Elderly patients earn +15 XP and +200 coins per level)
-        int xpEarned = Math.max(15 - hintsUsed * 2, 5);
-        int coinsEarned = 200;
+        int completedLevel = request.getLevel() != null ? request.getLevel() : progress.getCurrentLevel();
+
+        boolean isPattern = (game.getName() != null && game.getName().toLowerCase().contains("pattern"))
+                || (request.getPatternLength() != null)
+                || (request.getGameName() != null && request.getGameName().toLowerCase().contains("pattern"));
+
+        // Check if level was previously completed (replay)
+        boolean isReplay = (isPattern
+                ? (user.getHighestUnlockedPatternLevel() != null && completedLevel < user.getHighestUnlockedPatternLevel())
+                : (user.getHighestUnlockedLevel() != null && completedLevel < user.getHighestUnlockedLevel()))
+                || completedLevel < progress.getCurrentLevel();
+
+        // Calculate XP: 0 for replayed levels, +15 XP and +200 coins for new completions
+        int xpEarned = isReplay ? 0 : Math.max(15 - hintsUsed * 2, 5);
+        int coinsEarned = isReplay ? 0 : 200;
         
         // Save the telemetry attempt
         LevelAttempt attempt = LevelAttempt.builder()
@@ -73,16 +85,18 @@ public class GameService {
         // Update user streak & rewards
         dailyStreakService.recordDailyActivity(user, LocalDate.now());
 
-        int currentCoins = user.getCoins() != null ? user.getCoins() : 1000;
-        int currentTotalXp = user.getTotalXp() != null ? user.getTotalXp() : 1450;
-        int currentMonthlyXp = user.getMonthlyLeagueXp() != null ? user.getMonthlyLeagueXp() : 0;
-        
-        user.setCoins(currentCoins + coinsEarned);
-        user.setTotalXp(currentTotalXp + xpEarned);
-        user.setMonthlyLeagueXp(currentMonthlyXp + xpEarned);
+        if (!isReplay) {
+            int currentCoins = user.getCoins() != null ? user.getCoins() : 1000;
+            int currentTotalXp = user.getTotalXp() != null ? user.getTotalXp() : 1450;
+            int currentMonthlyXp = user.getMonthlyLeagueXp() != null ? user.getMonthlyLeagueXp() : 0;
+            
+            user.setCoins(currentCoins + coinsEarned);
+            user.setTotalXp(currentTotalXp + xpEarned);
+            user.setMonthlyLeagueXp(currentMonthlyXp + xpEarned);
+        }
         
         // Compute League Tier
-        int newMonthlyXp = user.getMonthlyLeagueXp();
+        int newMonthlyXp = user.getMonthlyLeagueXp() != null ? user.getMonthlyLeagueXp() : 0;
         String tierName = "Bronze Division";
         if (newMonthlyXp >= 900) {
             tierName = "Diamond Division";
@@ -96,16 +110,11 @@ public class GameService {
         user.setLeagueTier(tierName);
 
         // Progress level counter
-        int completedLevel = request.getLevel() != null ? request.getLevel() : progress.getCurrentLevel();
         int nextLevel = completedLevel + 1;
         progress.setCurrentLevel(Math.max(progress.getCurrentLevel(), nextLevel));
         progress.setLastPlayed(LocalDateTime.now());
         
         // Update User highest level tracker
-        boolean isPattern = (game.getName() != null && game.getName().toLowerCase().contains("pattern"))
-                || (request.getPatternLength() != null)
-                || (request.getGameName() != null && request.getGameName().toLowerCase().contains("pattern"));
-
         if (isPattern) {
             if (user.getHighestUnlockedPatternLevel() == null || nextLevel > user.getHighestUnlockedPatternLevel()) {
                 user.setHighestUnlockedPatternLevel(nextLevel);
