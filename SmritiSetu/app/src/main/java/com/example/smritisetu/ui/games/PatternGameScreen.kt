@@ -79,6 +79,7 @@ fun PatternGameScreen(
     val currentUser by AuthManager.currentUser.collectAsState()
     val hintsCount by AuthManager.hintsCount.collectAsState()
     val skipLevelCount by AuthManager.skipLevelCount.collectAsState()
+    val highestUnlockedPatternLevel by AuthManager.highestUnlockedPatternLevel.collectAsState()
     val darkTheme = isAppInDarkTheme(themeMode)
     val strings = LocalAppStrings.current
 
@@ -241,9 +242,13 @@ fun PatternGameScreen(
 
             scope.launch {
                 delay(600L)
-                // Award 15 XP + 200 Coins & Unlock next level
-                AuthManager.addRewards(xp = 15, coins = 200)
-                AuthManager.unlockNextPatternLevel(currentLevel)
+                val isReplay = currentLevel < highestUnlockedPatternLevel
+                if (isReplay) {
+                    AuthManager.addRewards(xp = 0, coins = 0)
+                } else {
+                    AuthManager.addRewards(xp = 15, coins = 200)
+                    AuthManager.unlockNextPatternLevel(currentLevel)
+                }
                 showVictoryDialog = true
             }
         } else {
@@ -295,8 +300,13 @@ fun PatternGameScreen(
                 val timeElapsedMs = System.currentTimeMillis() - levelStartTime
                 levelTimeElapsedSeconds = timeElapsedMs / 1000
 
-                AuthManager.addRewards(xp = 15, coins = 200)
-                AuthManager.unlockNextPatternLevel(currentLevel)
+                val isReplay = currentLevel < highestUnlockedPatternLevel
+                if (isReplay) {
+                    AuthManager.addRewards(xp = 0, coins = 0)
+                } else {
+                    AuthManager.addRewards(xp = 15, coins = 200)
+                    AuthManager.unlockNextPatternLevel(currentLevel)
+                }
                 showVictoryDialog = true
             }
         } else {
@@ -422,41 +432,58 @@ fun PatternGameScreen(
                         textAlign = TextAlign.Center
                     )
 
-                    // Rewards Banner
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(14.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.CenterVertically
+                    val isReplay = currentLevel < highestUnlockedPatternLevel
+                    if (isReplay) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = "+15 XP",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    text = "League XP",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                                )
-                            }
-                            VerticalDivider(modifier = Modifier.height(32.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = "+200 Coins",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.tertiary
-                                )
-                                Text(
-                                    text = "Brain Coins",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                                )
+                            Text(
+                                text = "Replayed Level • 0 XP & 0 Coins",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else {
+                        // Rewards Banner
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "+15 XP",
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Text(
+                                        text = "League XP",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                    )
+                                }
+                                VerticalDivider(modifier = Modifier.height(32.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "+200 Coins",
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.tertiary
+                                    )
+                                    Text(
+                                        text = "Brain Coins",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                    )
+                                }
                             }
                         }
                     }

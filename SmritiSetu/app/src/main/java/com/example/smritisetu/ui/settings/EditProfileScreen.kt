@@ -27,12 +27,20 @@ import com.example.smritisetu.theme.getGlassGradientBrush
 import com.example.smritisetu.theme.isAppInDarkTheme
 import kotlinx.coroutines.launch
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditProfileScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val currentUser by AuthManager.currentUser.collectAsState()
     val themeMode by AuthManager.themeMode.collectAsState()
     val darkTheme = isAppInDarkTheme(themeMode)
@@ -43,92 +51,28 @@ fun EditProfileScreen(
     var gender by remember { mutableStateOf(currentUser?.gender ?: "") }
     var ageText by remember { mutableStateOf(currentUser?.age?.takeIf { it > 0 }?.toString() ?: "") }
     var avatarUri by remember { mutableStateOf(currentUser?.avatarUri) }
-
-    var showPhotoPickerSheet by remember { mutableStateOf(false) }
+    var isUploadingAvatar by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
 
-    // Photo Source Dialog (Camera + Gallery)
-    if (showPhotoPickerSheet) {
-        AlertDialog(
-            onDismissRequest = { showPhotoPickerSheet = false },
-            title = { Text(strings.choosePhotoSource, fontWeight = FontWeight.Bold) },
-            text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Surface(
-                        onClick = {
-                            avatarUri = "camera://photo_${System.currentTimeMillis()}"
-                            showPhotoPickerSheet = false
-                            scope.launch { snackbarHostState.showSnackbar("Camera photo captured") }
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CameraAlt,
-                                contentDescription = strings.camera,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Text(
-                                text = strings.camera,
-                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-
-                    Surface(
-                        onClick = {
-                            avatarUri = "gallery://photo_${System.currentTimeMillis()}"
-                            showPhotoPickerSheet = false
-                            scope.launch { snackbarHostState.showSnackbar("Gallery photo selected") }
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.PhotoLibrary,
-                                contentDescription = strings.gallery,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(14.dp))
-                            Text(
-                                text = strings.gallery,
-                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showPhotoPickerSheet = false }) {
-                    Text(strings.cancel)
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            isUploadingAvatar = true
+            avatarUri = uri.toString()
+            AuthManager.uploadAvatar(context, uri) { result ->
+                isUploadingAvatar = false
+                if (result.isSuccess) {
+                    avatarUri = result.getOrNull()
+                    scope.launch { snackbarHostState.showSnackbar("Profile picture uploaded successfully!") }
+                } else {
+                    scope.launch { snackbarHostState.showSnackbar("Profile picture saved locally") }
                 }
             }
-        )
+        }
     }
 
     Scaffold(
@@ -161,7 +105,7 @@ fun EditProfileScreen(
                     .padding(horizontal = 20.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Profile Avatar with Camera + Gallery trigger
+                // Profile Avatar with Camera / Gallery trigger
                 GlassCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(24.dp),
@@ -175,34 +119,54 @@ fun EditProfileScreen(
                     ) {
                         Box(
                             contentAlignment = Alignment.BottomEnd,
-                            modifier = Modifier.clickable { showPhotoPickerSheet = true }
+                            modifier = Modifier.clickable { galleryLauncher.launch("image/*") }
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(90.dp)
+                                    .size(96.dp)
                                     .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary),
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    imageVector = if (avatarUri != null) Icons.Default.AccountCircle else Icons.Default.Person,
-                                    contentDescription = "Profile Photo",
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(54.dp)
-                                )
+                                if (isUploadingAvatar) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(36.dp),
+                                        color = MaterialTheme.colorScheme.primary,
+                                        strokeWidth = 3.dp
+                                    )
+                                } else if (!avatarUri.isNullOrBlank()) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(context)
+                                            .data(avatarUri)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "Profile Photo",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(CircleShape)
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.Person,
+                                        contentDescription = "Profile Photo",
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.size(54.dp)
+                                    )
+                                }
                             }
 
                             // Camera / Edit badge
                             Surface(
                                 shape = CircleShape,
-                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(32.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
                                         imageVector = Icons.Default.CameraAlt,
                                         contentDescription = strings.choosePhotoSource,
-                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        tint = MaterialTheme.colorScheme.onPrimary,
                                         modifier = Modifier.size(18.dp)
                                     )
                                 }
@@ -212,10 +176,10 @@ fun EditProfileScreen(
                         Spacer(modifier = Modifier.height(10.dp))
 
                         Text(
-                            text = strings.choosePhotoSource,
+                            text = if (isUploadingAvatar) "Uploading to Cloud..." else strings.choosePhotoSource,
                             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.clickable { showPhotoPickerSheet = true }
+                            modifier = Modifier.clickable { galleryLauncher.launch("image/*") }
                         )
                     }
                 }

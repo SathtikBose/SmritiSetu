@@ -228,6 +228,8 @@ fun CaregiverDashboardScreen(
         )
     }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+
     // Logout Confirmation Dialog
     if (showLogoutConfirmDialog) {
         AlertDialog(
@@ -238,7 +240,7 @@ fun CaregiverDashboardScreen(
                 Button(
                     onClick = {
                         showLogoutConfirmDialog = false
-                        AuthManager.logout()
+                        AuthManager.logout(context)
                         onLogout()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
@@ -405,18 +407,20 @@ fun CaregiverDashboardScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = if (isConnected) "Caregiver Link: Active" else "Pending Patient Connection",
+                                text = if (isConnected) "Caregiver Link: Permanent Active" else "Pending Patient Connection",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = if (isConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            FilledTonalButton(
-                                onClick = { showLinkPatientDialog = true },
-                                shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                            ) {
-                                Icon(Icons.Default.Link, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(if (isConnected) "Change Patient Code" else "Link Patient Code", fontSize = 12.sp)
+                            if (!isConnected) {
+                                FilledTonalButton(
+                                    onClick = { showLinkPatientDialog = true },
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                                ) {
+                                    Icon(Icons.Default.Link, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Link Patient Code", fontSize = 12.sp)
+                                }
                             }
                         }
                     }
