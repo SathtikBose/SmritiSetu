@@ -3,10 +3,16 @@ package com.example.smritisetu.data
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
+import com.example.smritisetu.network.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -397,17 +403,56 @@ object AuthManager {
         }
     }
 
+    private val appScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
     fun initStorage(context: Context) {
         try {
             sharedPreferences = context.getSharedPreferences("smritisetu_prefs", Context.MODE_PRIVATE)
             loadFromStorage()
+            // Fetch live profile in background if token exists
+            val token = sharedPreferences?.getString("auth_token", null)
+            if (!token.isNullOrBlank()) {
+                ApiClient.authToken = token
+                appScope.launch { refreshProfileFromBackend() }
+            }
         } catch (e: Exception) {
             Log.e("AuthManager", "Failed to init SharedPreferences", e)
         }
     }
 
+    suspend fun refreshProfileFromBackend() {
+        try {
+            val response = ApiClient.userApi.getProfile()
+            if (response.isSuccessful && response.body() != null) {
+                val dto = response.body()!!
+                withContext(Dispatchers.Main) {
+                    dto.coins?.let { c -> _currentUser.update { it?.copy(coins = c) } }
+                    dto.totalXp?.let { xp -> _currentUser.update { it?.copy(totalXp = xp) } }
+                    dto.monthlyLeagueXp?.let { mxp ->
+                        _monthlyLeagueXp.value = mxp
+                        val tier = LeagueTier.fromXp(mxp)
+                        _currentUser.update { it?.copy(monthlyLeagueXp = mxp, leagueTier = tier.tierName) }
+                    }
+                    dto.hintsCount?.let { _hintsCount.value = it }
+                    dto.showAgainCount?.let { _showAgainCount.value = it }
+                    dto.skipLevelCount?.let { _skipLevelCount.value = it }
+                    dto.highestUnlockedLevel?.let { _highestUnlockedLevel.value = it.coerceAtLeast(5) }
+                    dto.highestUnlockedPatternLevel?.let { _highestUnlockedPatternLevel.value = it.coerceAtLeast(5) }
+                    dto.streakDays?.let { _streakDays.value = it }
+                    dto.lastActiveDate?.let { _lastActiveDate.value = it }
+                    persistToStorage()
+                }
+            }
+        } catch (e: Exception) {
+            Log.w("AuthManager", "Could not refresh profile from backend: ${e.message}")
+        }
+    }
+
     private fun loadFromStorage() {
         val prefs = sharedPreferences ?: return
+        val savedToken = prefs.getString("auth_token", null)
+        ApiClient.authToken = savedToken
+
         val savedCoins = prefs.getInt("user_coins", 1000)
         val savedXp = prefs.getInt("user_xp", 1450)
         val savedMonthlyXp = prefs.getInt("monthly_league_xp", 315)
@@ -467,6 +512,7 @@ object AuthManager {
     private fun persistToStorage() {
         val prefs = sharedPreferences ?: return
         prefs.edit().apply {
+            putString("auth_token", ApiClient.authToken)
             putInt("user_coins", _currentUser.value?.coins ?: 1000)
             putInt("user_xp", _currentUser.value?.totalXp ?: 1450)
             putInt("monthly_league_xp", _monthlyLeagueXp.value)
@@ -527,6 +573,16 @@ object AuthManager {
             current?.copy(linkedPatientCode = cleaned)
         }
         persistToStorage()
+
+        // Sync with live backend
+        appScope.launch {
+            try {
+                ApiClient.caregiverApi.linkPatientByCode(LinkByCodeRequestDto(linkCode = cleaned))
+            } catch (e: Exception) {
+                Log.w("AuthManager", "Failed to link patient on backend: ${e.message}")
+            }
+        }
+
         return Result.success(true)
     }
 
@@ -538,17 +594,52 @@ object AuthManager {
             isActive = true
         )
         _reminders.update { it + newReminder }
+
+        // Sync with backend if linked patient exists
+        val patientId = _currentUser.value?.id
+        if (patientId != null) {
+            appScope.launch {
+                try {
+                    ApiClient.caregiverApi.createReminder(
+                        patientId = patientId,
+                        request = ReminderRequestDto(type = type, scheduledTime = time, message = message, active = true)
+                    )
+                } catch (e: Exception) {
+                    Log.w("AuthManager", "Failed to sync reminder creation: ${e.message}")
+                }
+            }
+        }
     }
 
     fun toggleReminder(id: String) {
         _reminders.update { list ->
             list.map { if (it.id == id) it.copy(isActive = !it.isActive) else it }
         }
+        val patientId = _currentUser.value?.id
+        if (patientId != null) {
+            appScope.launch {
+                try {
+                    ApiClient.caregiverApi.toggleReminder(patientId = patientId, reminderId = id)
+                } catch (e: Exception) {
+                    Log.w("AuthManager", "Failed to sync reminder toggle: ${e.message}")
+                }
+            }
+        }
     }
 
     fun deleteReminder(id: String) {
         _reminders.update { list ->
             list.filter { it.id != id }
+        }
+        val patientId = _currentUser.value?.id
+        if (patientId != null) {
+            appScope.launch {
+                try {
+                    ApiClient.caregiverApi.deleteReminder(patientId = patientId, reminderId = id)
+                } catch (e: Exception) {
+                    Log.w("AuthManager", "Failed to sync reminder deletion: ${e.message}")
+                }
+            }
         }
     }
 
@@ -558,10 +649,10 @@ object AuthManager {
             return Result.failure(IllegalStateException("Not enough coins! Earn more by completing levels."))
         }
 
-        // Deduct coins
+        // Deduct coins locally
         _currentUser.update { it?.copy(coins = currentCoins - perkType.costCoins) }
 
-        // Increment perk count
+        // Increment perk count locally
         when (perkType) {
             PerkType.HINT -> _hintsCount.update { it + 1 }
             PerkType.SHOW_AGAIN -> _showAgainCount.update { it + 1 }
@@ -569,6 +660,16 @@ object AuthManager {
         }
 
         persistToStorage()
+
+        // Sync with backend shop
+        appScope.launch {
+            try {
+                ApiClient.shopApi.buyPerk(BuyPerkRequestDto(perkType = perkType.name))
+            } catch (e: Exception) {
+                Log.w("AuthManager", "Failed to sync buy perk: ${e.message}")
+            }
+        }
+
         return Result.success(true)
     }
 
@@ -576,6 +677,13 @@ object AuthManager {
         if (_hintsCount.value > 0) {
             _hintsCount.update { it - 1 }
             persistToStorage()
+            appScope.launch {
+                try {
+                    ApiClient.userApi.usePerk(UsePerkRequestDto("HINT"))
+                } catch (e: Exception) {
+                    Log.w("AuthManager", "Failed to sync perk use: ${e.message}")
+                }
+            }
             return true
         }
         return false
@@ -585,6 +693,13 @@ object AuthManager {
         if (_showAgainCount.value > 0) {
             _showAgainCount.update { it - 1 }
             persistToStorage()
+            appScope.launch {
+                try {
+                    ApiClient.userApi.usePerk(UsePerkRequestDto("PEEK"))
+                } catch (e: Exception) {
+                    Log.w("AuthManager", "Failed to sync perk use: ${e.message}")
+                }
+            }
             return true
         }
         return false
@@ -596,6 +711,13 @@ object AuthManager {
         if (_skipLevelCount.value > 0) {
             _skipLevelCount.update { it - 1 }
             persistToStorage()
+            appScope.launch {
+                try {
+                    ApiClient.userApi.usePerk(UsePerkRequestDto("SKIP"))
+                } catch (e: Exception) {
+                    Log.w("AuthManager", "Failed to sync perk use: ${e.message}")
+                }
+            }
             return true
         }
         return false
@@ -636,6 +758,24 @@ object AuthManager {
         _isLoggedIn.value = true
         _activeRoleView.value = UserRole.PATIENT
         persistToStorage()
+
+        // Asynchronously authenticate against live backend
+        appScope.launch {
+            try {
+                val response = ApiClient.authApi.login(LoginRequest(email, pass))
+                if (response.isSuccessful && response.body() != null) {
+                    val dto = response.body()!!
+                    dto.token?.let { token ->
+                        ApiClient.authToken = token
+                        persistToStorage()
+                    }
+                    refreshProfileFromBackend()
+                }
+            } catch (e: Exception) {
+                Log.w("AuthManager", "Live login connection failed (offline mode active): ${e.message}")
+            }
+        }
+
         return Result.success(user)
     }
 
@@ -664,6 +804,34 @@ object AuthManager {
         _isLoggedIn.value = true
         _activeRoleView.value = role
         persistToStorage()
+
+        // Asynchronously register with live backend
+        appScope.launch {
+            try {
+                val response = ApiClient.authApi.register(
+                    RegisterRequest(
+                        username = email,
+                        password = pass,
+                        name = user.name,
+                        role = role.name,
+                        preferredLanguage = _selectedLanguage.value.name
+                    )
+                )
+                if (response.isSuccessful && response.body() != null) {
+                    val dto = response.body()!!
+                    dto.token?.let { token ->
+                        ApiClient.authToken = token
+                        persistToStorage()
+                    }
+                    if (role == UserRole.CAREGIVER && patientCodeToLink != null) {
+                        ApiClient.caregiverApi.linkPatientByCode(LinkByCodeRequestDto(linkCode = patientCodeToLink))
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w("AuthManager", "Live registration connection failed: ${e.message}")
+            }
+        }
+
         return Result.success(user)
     }
 
@@ -700,14 +868,25 @@ object AuthManager {
     }
 
     fun sendOtp(email: String): Result<String> {
+        appScope.launch {
+            try {
+                ApiClient.authApi.forgotPassword(ForgotPasswordRequestDto(email))
+            } catch (e: Exception) {
+                Log.w("AuthManager", "Failed to trigger OTP email: ${e.message}")
+            }
+        }
         return Result.success("123456")
     }
 
     fun verifyOtpAndResetPassword(email: String, otp: String, newPass: String): Result<Boolean> {
-        if (otp == "123456" || otp.length == 6) {
-            return Result.success(true)
+        appScope.launch {
+            try {
+                ApiClient.authApi.verifyOtp(VerifyOtpRequestDto(email = email, otp = otp, newPassword = newPass))
+            } catch (e: Exception) {
+                Log.w("AuthManager", "Failed to verify OTP with backend: ${e.message}")
+            }
         }
-        return Result.failure(IllegalArgumentException("Invalid OTP code"))
+        return Result.success(true)
     }
 
     fun changePassword(currentPass: String, newPass: String): Result<Boolean> {
@@ -716,6 +895,13 @@ object AuthManager {
         }
         if (newPass.length < 6) {
             return Result.failure(IllegalArgumentException("New password must be at least 6 characters"))
+        }
+        appScope.launch {
+            try {
+                ApiClient.authApi.changePassword(ChangePasswordRequestDto(currentPass, newPass))
+            } catch (e: Exception) {
+                Log.w("AuthManager", "Failed to change password on backend: ${e.message}")
+            }
         }
         return Result.success(true)
     }
@@ -731,18 +917,68 @@ object AuthManager {
             )
         }
         persistToStorage()
+
+        appScope.launch {
+            try {
+                ApiClient.userApi.updateProfile(
+                    UpdateProfileRequestDto(
+                        name = name,
+                        preferredLanguage = _selectedLanguage.value.name,
+                        phone = phone,
+                        gender = gender,
+                        age = age,
+                        avatarUri = avatarUri
+                    )
+                )
+            } catch (e: Exception) {
+                Log.w("AuthManager", "Failed to sync profile update: ${e.message}")
+            }
+        }
     }
 
     fun recordGameTelemetry(log: CognitiveGameLog) {
         _telemetryLogs.update { it + log }
         recordDailyActivity()
-        try {
-            Log.i(
-                "SmritiSetuAnalytics",
-                "CognitiveGameLog: game=${log.gameName}, level=${log.level}, tries=${log.tries}, totalCards=${log.totalCards}, timeMs=${log.timeElapsedMs}, idleHints=${log.hintsUsed}, perkHints=${log.perkHintsUsed}, diff=${log.difficulty}"
-            )
-        } catch (_: Exception) {
-            println("[SmritiSetuAnalytics] CognitiveGameLog: $log")
+
+        // Send telemetry payload to live backend and AI engine
+        appScope.launch {
+            try {
+                val isPattern = log.gameName.lowercase().contains("pattern")
+                val requestDto = LevelAttemptRequestDto(
+                    gameName = log.gameName,
+                    level = log.level,
+                    timeTakenMs = log.timeElapsedMs,
+                    timeTakenSec = (log.timeElapsedMs / 1000).toInt(),
+                    triesCount = log.tries,
+                    totalCards = log.totalCards,
+                    idleHintsCount = log.hintsUsed,
+                    perkHintsCount = log.perkHintsUsed,
+                    difficulty = log.difficulty,
+                    syncedOffline = false
+                )
+
+                val response = if (isPattern) {
+                    ApiClient.gameApi.completePatternLevel(requestDto)
+                } else {
+                    ApiClient.gameApi.completeMatchCardLevel(requestDto)
+                }
+
+                if (response.isSuccessful && response.body() != null) {
+                    val body = response.body()!!
+                    withContext(Dispatchers.Main) {
+                        body.totalCoins?.let { coins -> _currentUser.update { it?.copy(coins = coins) } }
+                        body.totalXp?.let { xp -> _currentUser.update { it?.copy(totalXp = xp) } }
+                        body.monthlyLeagueXp?.let { mxp ->
+                            _monthlyLeagueXp.value = mxp
+                            val tier = LeagueTier.fromXp(mxp)
+                            _currentUser.update { it?.copy(monthlyLeagueXp = mxp, leagueTier = tier.tierName) }
+                        }
+                        persistToStorage()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w("AuthManager", "Failed to sync telemetry to backend (cached locally): ${e.message}")
+            }
         }
     }
 
@@ -763,6 +999,7 @@ object AuthManager {
     fun logout() {
         _isLoggedIn.value = false
         _currentUser.value = null
+        ApiClient.authToken = null
         _highestUnlockedLevel.value = 5
         _highestUnlockedPatternLevel.value = 5
         _hintsCount.value = 0
