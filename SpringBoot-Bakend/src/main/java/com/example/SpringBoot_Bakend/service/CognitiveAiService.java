@@ -60,14 +60,44 @@ public class CognitiveAiService {
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
+    public static class SuggestedParams {
+        @com.fasterxml.jackson.annotation.JsonProperty("time_limit_seconds")
+        private Integer time_limit_seconds;
+
+        @com.fasterxml.jackson.annotation.JsonProperty("idle_hint_delay_seconds")
+        private Double idle_hint_delay_seconds;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
     public static class PredictionResponse {
+        @com.fasterxml.jackson.annotation.JsonProperty("predicted_difficulty")
         private String predicted_difficulty;
+
+        @com.fasterxml.jackson.annotation.JsonAlias({"confidence", "confidence_score"})
         private Double confidence;
+
+        @com.fasterxml.jackson.annotation.JsonProperty("suggested_parameters")
+        private SuggestedParams suggested_parameters;
+
         private Integer suggested_timer_seconds;
         private Integer suggested_idle_hint_seconds;
+
+        @com.fasterxml.jackson.annotation.JsonAlias({"cognitive_performance_index", "cognitive_index"})
         private Double cognitive_performance_index;
+
+        @com.fasterxml.jackson.annotation.JsonProperty("fatigue_detected")
         private Boolean fatigue_detected;
+
+        @com.fasterxml.jackson.annotation.JsonAlias({"clinical_rationale", "rationale"})
         private String clinical_rationale;
+
+        public String getClinical_rationale() {
+            return clinical_rationale != null ? clinical_rationale : "Difficulty adjusted based on cognitive performance.";
+        }
     }
 
     public PredictionResponse predictDifficulty(PredictionRequest request) {
