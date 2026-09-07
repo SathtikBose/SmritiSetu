@@ -56,23 +56,23 @@ public class User implements UserDetails {
 
     @Column(nullable = false)
     @Builder.Default
-    private Integer coins = 1000;
+    private Integer coins = 0;
 
     @Column(name = "hints_count", nullable = false)
     @Builder.Default
-    private Integer hintsCount = 0;
+    private Integer hintsCount = 3;
 
     @Column(name = "skip_level_count", nullable = false)
     @Builder.Default
-    private Integer skipLevelCount = 0;
+    private Integer skipLevelCount = 1;
 
     @Column(name = "show_again_count", nullable = false)
     @Builder.Default
-    private Integer showAgainCount = 0;
+    private Integer showAgainCount = 1;
 
     @Column(name = "total_xp", nullable = false)
     @Builder.Default
-    private Integer totalXp = 1450;
+    private Integer totalXp = 0;
 
     @Column(name = "monthly_league_xp", nullable = false)
     @Builder.Default
@@ -107,11 +107,12 @@ public class User implements UserDetails {
 
     @Column(name = "highest_unlocked_level", nullable = false)
     @Builder.Default
-    private Integer highestUnlockedLevel = 5;
+    private Integer highestUnlockedLevel = 1;
 
     @Column(name = "highest_unlocked_pattern_level", nullable = false)
     @Builder.Default
-    private Integer highestUnlockedPatternLevel = 5;
+    private Integer highestUnlockedPatternLevel = 1;
+
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
