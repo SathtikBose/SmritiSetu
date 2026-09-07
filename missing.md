@@ -1,5 +1,9 @@
 # 🛠️ SmritiSetu: Backend Missing Requirements & Action Plan
 
+> ### 🌐 Live Deployed Cloud Services:
+> - **Spring Boot Backend**: `https://smritisetu-wv7w.onrender.com` (Health check: `GET https://smritisetu-wv7w.onrender.com/auth/health` -> `200 OK`)
+> - **Python AI Model Service**: `https://smritisetuai.onrender.com` (Health check: `GET https://smritisetuai.onrender.com/health` -> `200 OK`)
+
 This document outlines everything required in the **Spring Boot Backend (`SpringBoot-Bakend`)** to achieve 100% feature parity with the **Android Frontend (`SmritiSetu`)** and the **Python AI Model (`model/`)**.
 
 ---
