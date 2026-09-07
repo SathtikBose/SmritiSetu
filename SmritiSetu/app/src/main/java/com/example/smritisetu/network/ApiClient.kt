@@ -10,7 +10,7 @@ import retrofit2.Retrofit
 import java.util.concurrent.TimeUnit
 
 object ApiClient {
-    const val BASE_URL = "https://smritisetu-wv7w.onrender.com/"
+    const val BASE_URL = "https://smritisetu-backend-fuab.onrender.com/"
 
     @Volatile
     var authToken: String? = null

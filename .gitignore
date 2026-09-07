@@ -51,6 +51,8 @@ yarn-error.*
 *.key
 *.pem
 *.mobileprovision
+google-services.json
+**/google-services.json
 
 # Logs & Temp
 *.log
