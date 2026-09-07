@@ -89,4 +89,8 @@ dependencies {
   implementation(libs.okhttp.core)
   implementation(libs.okhttp.logging)
   implementation(libs.kotlinx.serialization.json)
+
+  // Google Sign-In Play Services
+  implementation(libs.play.services.auth)
 }
+

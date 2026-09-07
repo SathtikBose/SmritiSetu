@@ -139,24 +139,24 @@ data class CaregiverReminder(
 )
 
 data class UserProfile(
-    val id: String = "user_001",
-    val name: String = "Dr. Ananya Sharma",
-    val email: String = "ananya.sharma@example.com",
-    val phone: String = "+91 98765 43210",
-    val gender: String = "Female",
-    val age: Int = 68,
+    val id: String = UUID.randomUUID().toString(),
+    val name: String = "",
+    val email: String = "",
+    val phone: String = "",
+    val gender: String = "",
+    val age: Int = 0,
     val avatarUri: String? = null,
     val role: UserRole = UserRole.PATIENT,
-    val patientLinkCode: String = "SM-8492", // 6-digit unique linking code for patients
+    val patientLinkCode: String = "SM-" + (1000..9999).random(), // 6-digit unique linking code for patients
     val linkedPatientCode: String? = null, // Linked patient code for caregivers
     val preferredLanguage: String = "English",
     val isGoogleLinked: Boolean = false,
-    val totalXp: Int = 1450,
-    val monthlyLeagueXp: Int = 315,
-    val coins: Int = 1000,
+    val totalXp: Int = 0,
+    val monthlyLeagueXp: Int = 0,
+    val coins: Int = 0,
     val streakDays: Int = 0,
     val lastActiveDate: String? = null,
-    val leagueTier: String = LeagueTier.fromXp(315).tierName
+    val leagueTier: String = LeagueTier.BRONZE.tierName
 )
 
 data class CognitiveGameLog(
@@ -174,10 +174,10 @@ data class CognitiveGameLog(
 object AuthManager {
     private var sharedPreferences: SharedPreferences? = null
 
-    private val _isLoggedIn = MutableStateFlow(true)
+    private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
-    private val _currentUser = MutableStateFlow<UserProfile?>(UserProfile())
+    private val _currentUser = MutableStateFlow<UserProfile?>(null)
     val currentUser: StateFlow<UserProfile?> = _currentUser.asStateFlow()
 
     // Dynamic Daily Streak Tracking
@@ -187,7 +187,7 @@ object AuthManager {
     private val _lastActiveDate = MutableStateFlow<String?>(null)
     val lastActiveDate: StateFlow<String?> = _lastActiveDate.asStateFlow()
 
-    // Active View Mode: allows instant switching between Patient Mode and Caregiver Dashboard for testing
+    // Active View Mode
     private val _activeRoleView = MutableStateFlow(UserRole.PATIENT)
     val activeRoleView: StateFlow<UserRole> = _activeRoleView.asStateFlow()
 
@@ -202,12 +202,12 @@ object AuthManager {
     private val _selectedLanguage = MutableStateFlow(AppLanguage.ENGLISH)
     val selectedLanguage: StateFlow<AppLanguage> = _selectedLanguage.asStateFlow()
 
-    // Game Level Progression: Levels 1 to 5 are unlocked by default
-    private val _highestUnlockedLevel = MutableStateFlow(5)
+    // Game Level Progression: Level 1 unlocked by default
+    private val _highestUnlockedLevel = MutableStateFlow(1)
     val highestUnlockedLevel: StateFlow<Int> = _highestUnlockedLevel.asStateFlow()
 
-    // Game 2 (Pattern Matching) Level Progression: Levels 1 to 5 unlocked by default
-    private val _highestUnlockedPatternLevel = MutableStateFlow(5)
+    // Game 2 (Pattern Matching) Level Progression: Level 1 unlocked by default
+    private val _highestUnlockedPatternLevel = MutableStateFlow(1)
     val highestUnlockedPatternLevel: StateFlow<Int> = _highestUnlockedPatternLevel.asStateFlow()
 
     // In-Game Perks Inventory (Default: 0)
@@ -222,32 +222,18 @@ object AuthManager {
     val skipLevelCount: StateFlow<Int> = _skipLevelCount.asStateFlow()
 
     // Monthly League Season XP & Reset Tracking
-    private val _monthlyLeagueXp = MutableStateFlow(315) // Default sample: 315 XP (Silver Tier)
+    private val _monthlyLeagueXp = MutableStateFlow(0)
     val monthlyLeagueXp: StateFlow<Int> = _monthlyLeagueXp.asStateFlow()
 
     private val _lastSeasonResetMonth = MutableStateFlow(getCurrentYearMonthKey())
     val lastSeasonResetMonth: StateFlow<String> = _lastSeasonResetMonth.asStateFlow()
 
-    // Caregiver Daily Reminders
-    private val _reminders = MutableStateFlow<List<CaregiverReminder>>(
-        listOf(
-            CaregiverReminder(id = "rem_1", type = "Medicine", time = "08:00 AM", message = "Morning Memory Medication", isActive = true),
-            CaregiverReminder(id = "rem_2", type = "Hydration", time = "02:00 PM", message = "Drink fresh water / Lemon water", isActive = true),
-            CaregiverReminder(id = "rem_3", type = "Activity", time = "05:30 PM", message = "Gentle evening stroll in garden", isActive = false)
-        )
-    )
+    // Caregiver Daily Reminders (Starts empty, dynamic from backend)
+    private val _reminders = MutableStateFlow<List<CaregiverReminder>>(emptyList())
     val reminders: StateFlow<List<CaregiverReminder>> = _reminders.asStateFlow()
 
-    // Cognitive Telemetry Logs (preloaded with sample historical session logs for rich dashboard display)
-    private val _telemetryLogs = MutableStateFlow<List<CognitiveGameLog>>(
-        listOf(
-            CognitiveGameLog(gameName = "MatchTheCard", level = 1, tries = 3, totalCards = 4, timeElapsedMs = 28000L, hintsUsed = 0, perkHintsUsed = 0, difficulty = "EASY"),
-            CognitiveGameLog(gameName = "MatchTheCard", level = 2, tries = 4, totalCards = 6, timeElapsedMs = 34000L, hintsUsed = 0, perkHintsUsed = 0, difficulty = "EASY"),
-            CognitiveGameLog(gameName = "MatchTheCard", level = 3, tries = 5, totalCards = 8, timeElapsedMs = 42000L, hintsUsed = 1, perkHintsUsed = 0, difficulty = "EASY"),
-            CognitiveGameLog(gameName = "MatchTheCard", level = 4, tries = 6, totalCards = 10, timeElapsedMs = 49000L, hintsUsed = 1, perkHintsUsed = 0, difficulty = "EASY"),
-            CognitiveGameLog(gameName = "MatchTheCard", level = 5, tries = 7, totalCards = 12, timeElapsedMs = 58000L, hintsUsed = 2, perkHintsUsed = 1, difficulty = "EASY")
-        )
-    )
+    // Cognitive Telemetry Logs
+    private val _telemetryLogs = MutableStateFlow<List<CognitiveGameLog>>(emptyList())
     val telemetryLogs: StateFlow<List<CognitiveGameLog>> = _telemetryLogs.asStateFlow()
 
     fun getCurrentYearMonthKey(): String {
@@ -426,6 +412,13 @@ object AuthManager {
             if (response.isSuccessful && response.body() != null) {
                 val dto = response.body()!!
                 withContext(Dispatchers.Main) {
+                    dto.name?.let { n -> if (n.isNotBlank()) _currentUser.update { it?.copy(name = n) } }
+                    dto.phone?.let { p -> _currentUser.update { it?.copy(phone = p) } }
+                    dto.gender?.let { g -> _currentUser.update { it?.copy(gender = g) } }
+                    dto.age?.let { a -> _currentUser.update { it?.copy(age = a) } }
+                    dto.avatarUri?.let { av -> _currentUser.update { it?.copy(avatarUri = av) } }
+                    dto.patientLinkCode?.let { code -> _currentUser.update { it?.copy(patientLinkCode = code) } }
+                    dto.linkedPatientCode?.let { lcode -> _currentUser.update { it?.copy(linkedPatientCode = lcode) } }
                     dto.coins?.let { c -> _currentUser.update { it?.copy(coins = c) } }
                     dto.totalXp?.let { xp -> _currentUser.update { it?.copy(totalXp = xp) } }
                     dto.monthlyLeagueXp?.let { mxp ->
@@ -436,11 +429,53 @@ object AuthManager {
                     dto.hintsCount?.let { _hintsCount.value = it }
                     dto.showAgainCount?.let { _showAgainCount.value = it }
                     dto.skipLevelCount?.let { _skipLevelCount.value = it }
-                    dto.highestUnlockedLevel?.let { _highestUnlockedLevel.value = it.coerceAtLeast(5) }
-                    dto.highestUnlockedPatternLevel?.let { _highestUnlockedPatternLevel.value = it.coerceAtLeast(5) }
+                    dto.highestUnlockedLevel?.let { _highestUnlockedLevel.value = it.coerceAtLeast(1) }
+                    dto.highestUnlockedPatternLevel?.let { _highestUnlockedPatternLevel.value = it.coerceAtLeast(1) }
                     dto.streakDays?.let { _streakDays.value = it }
                     dto.lastActiveDate?.let { _lastActiveDate.value = it }
                     persistToStorage()
+                }
+            }
+
+            // Also refresh reminders dynamically from backend
+            val userRole = _currentUser.value?.role ?: UserRole.PATIENT
+            if (userRole == UserRole.PATIENT) {
+                val remindersRes = ApiClient.userApi.getOwnReminders()
+                if (remindersRes.isSuccessful && remindersRes.body() != null) {
+                    val list = remindersRes.body()!!.map { r ->
+                        CaregiverReminder(
+                            id = r.id,
+                            type = r.type,
+                            time = r.scheduledTime,
+                            message = r.message,
+                            isActive = r.active ?: true
+                        )
+                    }
+                    withContext(Dispatchers.Main) {
+                        _reminders.value = list
+                    }
+                }
+            } else if (userRole == UserRole.CAREGIVER) {
+                val summaryRes = ApiClient.caregiverApi.getPatientSummary()
+                if (summaryRes.isSuccessful && summaryRes.body() != null) {
+                    val summary = summaryRes.body()!!
+                    summary.patientId?.let { pid ->
+                        val pRemindersRes = ApiClient.caregiverApi.getPatientReminders(pid)
+                        if (pRemindersRes.isSuccessful && pRemindersRes.body() != null) {
+                            val list = pRemindersRes.body()!!.map { r ->
+                                CaregiverReminder(
+                                    id = r.id,
+                                    type = r.type,
+                                    time = r.scheduledTime,
+                                    message = r.message,
+                                    isActive = r.active ?: true
+                                )
+                            }
+                            withContext(Dispatchers.Main) {
+                                _reminders.value = list
+                            }
+                        }
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -451,26 +486,42 @@ object AuthManager {
     private fun loadFromStorage() {
         val prefs = sharedPreferences ?: return
         val savedToken = prefs.getString("auth_token", null)
+        val savedEmail = prefs.getString("user_email", null)
+
+        if (savedToken.isNullOrBlank() && savedEmail.isNullOrBlank()) {
+            _isLoggedIn.value = false
+            _currentUser.value = null
+            _reminders.value = emptyList()
+            _telemetryLogs.value = emptyList()
+            return
+        }
+
         ApiClient.authToken = savedToken
 
-        val savedCoins = prefs.getInt("user_coins", 1000)
-        val savedXp = prefs.getInt("user_xp", 1450)
-        val savedMonthlyXp = prefs.getInt("monthly_league_xp", 315)
+        val savedCoins = prefs.getInt("user_coins", 0)
+        val savedXp = prefs.getInt("user_xp", 0)
+        val savedMonthlyXp = prefs.getInt("monthly_league_xp", 0)
         val savedResetMonth = prefs.getString("last_season_reset_month", getCurrentYearMonthKey()) ?: getCurrentYearMonthKey()
-        val savedHighestLevel = prefs.getInt("highest_unlocked_level", 5)
-        val savedHighestPatternLevel = prefs.getInt("highest_unlocked_pattern_level", 5)
+        val savedHighestLevel = prefs.getInt("highest_unlocked_level", 1)
+        val savedHighestPatternLevel = prefs.getInt("highest_unlocked_pattern_level", 1)
         val savedHints = prefs.getInt("hints_count", 0)
         val savedShowAgain = prefs.getInt("show_again_count", 0)
         val savedSkips = prefs.getInt("skips_count", 0)
         val savedStreak = prefs.getInt("streak_days", 0)
         val savedLastActiveDate = prefs.getString("last_active_date", null)
         val savedRoleName = prefs.getString("user_role", UserRole.PATIENT.name) ?: UserRole.PATIENT.name
-        val savedLinkCode = prefs.getString("patient_link_code", "SM-8492") ?: "SM-8492"
+        val savedLinkCode = prefs.getString("patient_link_code", "SM-" + (1000..9999).random()) ?: "SM-8492"
         val savedLinkedCode = prefs.getString("linked_patient_code", null)
         val savedLangName = prefs.getString("selected_language", AppLanguage.ENGLISH.name) ?: AppLanguage.ENGLISH.name
+        val savedName = prefs.getString("user_name", "") ?: ""
+        val savedPhone = prefs.getString("user_phone", "") ?: ""
+        val savedGender = prefs.getString("user_gender", "") ?: ""
+        val savedAge = prefs.getInt("user_age", 0)
+        val savedAvatarUri = prefs.getString("user_avatar_uri", null)
+        val savedIsGoogle = prefs.getBoolean("is_google_linked", false)
 
-        _highestUnlockedLevel.value = savedHighestLevel.coerceAtLeast(5)
-        _highestUnlockedPatternLevel.value = savedHighestPatternLevel.coerceAtLeast(5)
+        _highestUnlockedLevel.value = savedHighestLevel.coerceAtLeast(1)
+        _highestUnlockedPatternLevel.value = savedHighestPatternLevel.coerceAtLeast(1)
         _hintsCount.value = savedHints
         _showAgainCount.value = savedShowAgain
         _skipLevelCount.value = savedSkips
@@ -494,27 +545,42 @@ object AuthManager {
         checkAndPerformMonthlyLeagueReset()
         val tier = LeagueTier.fromXp(_monthlyLeagueXp.value)
 
-        _currentUser.update { current ->
-            current?.copy(
-                coins = savedCoins,
-                totalXp = savedXp,
-                monthlyLeagueXp = _monthlyLeagueXp.value,
-                leagueTier = tier.tierName,
-                streakDays = effectiveStreak,
-                lastActiveDate = savedLastActiveDate,
-                role = userRole,
-                patientLinkCode = savedLinkCode,
-                linkedPatientCode = savedLinkedCode
-            )
-        }
+        _currentUser.value = UserProfile(
+            name = savedName,
+            email = savedEmail ?: "",
+            phone = savedPhone,
+            gender = savedGender,
+            age = savedAge,
+            avatarUri = savedAvatarUri,
+            role = userRole,
+            patientLinkCode = savedLinkCode,
+            linkedPatientCode = savedLinkedCode,
+            preferredLanguage = _selectedLanguage.value.displayName,
+            isGoogleLinked = savedIsGoogle,
+            totalXp = savedXp,
+            monthlyLeagueXp = _monthlyLeagueXp.value,
+            coins = savedCoins,
+            streakDays = effectiveStreak,
+            lastActiveDate = savedLastActiveDate,
+            leagueTier = tier.tierName
+        )
+        _isLoggedIn.value = true
     }
 
     private fun persistToStorage() {
         val prefs = sharedPreferences ?: return
+        val user = _currentUser.value
         prefs.edit().apply {
             putString("auth_token", ApiClient.authToken)
-            putInt("user_coins", _currentUser.value?.coins ?: 1000)
-            putInt("user_xp", _currentUser.value?.totalXp ?: 1450)
+            putString("user_email", user?.email)
+            putString("user_name", user?.name)
+            putString("user_phone", user?.phone)
+            putString("user_gender", user?.gender)
+            putInt("user_age", user?.age ?: 0)
+            putString("user_avatar_uri", user?.avatarUri)
+            putBoolean("is_google_linked", user?.isGoogleLinked ?: false)
+            putInt("user_coins", user?.coins ?: 0)
+            putInt("user_xp", user?.totalXp ?: 0)
             putInt("monthly_league_xp", _monthlyLeagueXp.value)
             putString("last_season_reset_month", _lastSeasonResetMonth.value)
             putInt("highest_unlocked_level", _highestUnlockedLevel.value)
@@ -524,9 +590,9 @@ object AuthManager {
             putInt("skips_count", _skipLevelCount.value)
             putInt("streak_days", _streakDays.value)
             putString("last_active_date", _lastActiveDate.value)
-            putString("user_role", _currentUser.value?.role?.name ?: UserRole.PATIENT.name)
-            putString("patient_link_code", _currentUser.value?.patientLinkCode ?: "SM-8492")
-            putString("linked_patient_code", _currentUser.value?.linkedPatientCode)
+            putString("user_role", user?.role?.name ?: UserRole.PATIENT.name)
+            putString("patient_link_code", user?.patientLinkCode ?: "SM-8492")
+            putString("linked_patient_code", user?.linkedPatientCode)
             putString("selected_language", _selectedLanguage.value.name)
             apply()
         }
@@ -793,7 +859,7 @@ object AuthManager {
             email = email,
             role = role,
             patientLinkCode = generatedPatientCode,
-            linkedPatientCode = if (role == UserRole.CAREGIVER) patientCodeToLink?.trim()?.uppercase() ?: "SM-8492" else null,
+            linkedPatientCode = if (role == UserRole.CAREGIVER) patientCodeToLink?.trim()?.uppercase()?.takeIf { it.isNotBlank() } else null,
             preferredLanguage = _selectedLanguage.value.displayName,
             monthlyLeagueXp = _monthlyLeagueXp.value,
             leagueTier = tier.tierName,
@@ -835,24 +901,82 @@ object AuthManager {
         return Result.success(user)
     }
 
+    fun loginWithGoogleAccount(
+        account: com.google.android.gms.auth.api.signin.GoogleSignInAccount,
+        role: UserRole = UserRole.PATIENT
+    ): Result<UserProfile> {
+        val googleName = account.displayName ?: account.givenName ?: if (role == UserRole.CAREGIVER) "Caregiver" else "Patient"
+        val googleEmail = account.email ?: "google.user@example.com"
+        val photoUri = account.photoUrl?.toString()
+        val idToken = account.idToken
+        val generatedPatientCode = "SM-" + (1000..9999).random()
+
+        val user = UserProfile(
+            id = account.id ?: UUID.randomUUID().toString(),
+            name = googleName,
+            email = googleEmail,
+            phone = "",
+            gender = "",
+            age = 0,
+            avatarUri = photoUri,
+            role = role,
+            patientLinkCode = generatedPatientCode,
+            linkedPatientCode = null,
+            preferredLanguage = _selectedLanguage.value.displayName,
+            isGoogleLinked = true,
+            totalXp = 0,
+            monthlyLeagueXp = 0,
+            coins = 0,
+            streakDays = 0,
+            lastActiveDate = null,
+            leagueTier = LeagueTier.BRONZE.tierName
+        )
+        _currentUser.value = user
+        _isLoggedIn.value = true
+        _activeRoleView.value = role
+        persistToStorage()
+
+        if (!idToken.isNullOrBlank()) {
+            appScope.launch {
+                try {
+                    val response = ApiClient.authApi.googleLogin(
+                        GoogleAuthRequest(idToken = idToken, role = role.name)
+                    )
+                    if (response.isSuccessful && response.body() != null) {
+                        val dto = response.body()!!
+                        dto.token?.let { token ->
+                            ApiClient.authToken = token
+                            persistToStorage()
+                        }
+                        refreshProfileFromBackend()
+                    }
+                } catch (e: Exception) {
+                    Log.w("AuthManager", "Backend Google OAuth token sync: ${e.message}")
+                }
+            }
+        }
+        return Result.success(user)
+    }
+
     fun loginWithGoogle(): Result<UserProfile> {
-        val tier = LeagueTier.fromXp(_monthlyLeagueXp.value)
-        val googleUser = UserProfile(
-            name = "Google User",
-            email = "user@gmail.com",
+        val user = UserProfile(
+            name = "User",
+            email = "user@example.com",
             isGoogleLinked = true,
             role = UserRole.PATIENT,
             preferredLanguage = _selectedLanguage.value.displayName,
-            monthlyLeagueXp = _monthlyLeagueXp.value,
-            leagueTier = tier.tierName,
-            streakDays = _streakDays.value,
-            lastActiveDate = _lastActiveDate.value
+            monthlyLeagueXp = 0,
+            totalXp = 0,
+            coins = 0,
+            streakDays = 0,
+            leagueTier = LeagueTier.BRONZE.tierName,
+            lastActiveDate = null
         )
-        _currentUser.value = googleUser
+        _currentUser.value = user
         _isLoggedIn.value = true
         _activeRoleView.value = UserRole.PATIENT
         persistToStorage()
-        return Result.success(googleUser)
+        return Result.success(user)
     }
 
     fun linkGoogleAccount(): Boolean {
@@ -1000,8 +1124,8 @@ object AuthManager {
         _isLoggedIn.value = false
         _currentUser.value = null
         ApiClient.authToken = null
-        _highestUnlockedLevel.value = 5
-        _highestUnlockedPatternLevel.value = 5
+        _highestUnlockedLevel.value = 1
+        _highestUnlockedPatternLevel.value = 1
         _hintsCount.value = 0
         _showAgainCount.value = 0
         _skipLevelCount.value = 0
@@ -1010,6 +1134,9 @@ object AuthManager {
         _lastActiveDate.value = null
         _lastSeasonResetMonth.value = getCurrentYearMonthKey()
         _activeRoleView.value = UserRole.PATIENT
-        persistToStorage()
+        _reminders.value = emptyList()
+        _telemetryLogs.value = emptyList()
+        val prefs = sharedPreferences ?: return
+        prefs.edit().clear().apply()
     }
 }

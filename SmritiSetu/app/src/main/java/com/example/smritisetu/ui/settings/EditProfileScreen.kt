@@ -40,8 +40,8 @@ fun EditProfileScreen(
 
     var name by remember { mutableStateOf(currentUser?.name ?: "") }
     var phone by remember { mutableStateOf(currentUser?.phone ?: "") }
-    var gender by remember { mutableStateOf(currentUser?.gender ?: "Female") }
-    var ageText by remember { mutableStateOf((currentUser?.age ?: 68).toString()) }
+    var gender by remember { mutableStateOf(currentUser?.gender ?: "") }
+    var ageText by remember { mutableStateOf(currentUser?.age?.takeIf { it > 0 }?.toString() ?: "") }
     var avatarUri by remember { mutableStateOf(currentUser?.avatarUri) }
 
     var showPhotoPickerSheet by remember { mutableStateOf(false) }
@@ -313,7 +313,7 @@ fun EditProfileScreen(
                 // Save Button
                 Button(
                     onClick = {
-                        val ageInt = ageText.toIntOrNull() ?: 68
+                        val ageInt = ageText.toIntOrNull() ?: 0
                         AuthManager.updateProfile(name, phone, gender, ageInt, avatarUri)
                         scope.launch {
                             snackbarHostState.showSnackbar(strings.profileUpdated)
