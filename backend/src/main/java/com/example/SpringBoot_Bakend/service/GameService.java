@@ -39,12 +39,13 @@ public class GameService {
                 return gameRepository.save(g);
             });
         }
+        final Game targetGame = game;
         
         // Find or create progress profile for this specific game
-        GameProgress progress = progressRepository.findByUserIdAndGameId(user.getId(), game.getId())
+        GameProgress progress = progressRepository.findByUserIdAndGameId(user.getId(), targetGame.getId())
                 .orElseGet(() -> progressRepository.save(GameProgress.builder()
                         .user(user)
-                        .game(game)
+                        .game(targetGame)
                         .currentLevel(request.getLevel() != null ? request.getLevel() : 1)
                         .currentDifficulty(1)
                         .build()));
