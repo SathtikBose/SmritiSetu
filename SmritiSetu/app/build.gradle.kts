@@ -92,5 +92,8 @@ dependencies {
 
   // Google Sign-In Play Services
   implementation(libs.play.services.auth)
+
+  // Coil for Avatar Image Loading
+  implementation(libs.coil.compose)
 }
 

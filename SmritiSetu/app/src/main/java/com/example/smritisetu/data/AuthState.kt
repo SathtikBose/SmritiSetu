@@ -1071,6 +1071,40 @@ object AuthManager {
         }
     }
 
+    fun uploadAvatar(context: Context, imageUri: android.net.Uri, onComplete: (Result<String>) -> Unit = {}) {
+        _currentUser.update { it?.copy(avatarUri = imageUri.toString()) }
+        persistToStorage()
+
+        appScope.launch {
+            try {
+                val inputStream = context.contentResolver.openInputStream(imageUri)
+                val bytes = inputStream?.use { it.readBytes() }
+                if (bytes != null && bytes.isNotEmpty()) {
+                    val requestBody = okhttp3.RequestBody.create(okhttp3.MediaType.parse("image/*"), bytes)
+                    val part = okhttp3.MultipartBody.Part.createFormData("file", "avatar_${System.currentTimeMillis()}.jpg", requestBody)
+                    val response = ApiClient.userApi.uploadAvatar(part)
+                    if (response.isSuccessful && response.body() != null) {
+                        val updatedAvatar = response.body()!!.avatarUri ?: imageUri.toString()
+                        withContext(Dispatchers.Main) {
+                            _currentUser.update { it?.copy(avatarUri = updatedAvatar) }
+                            persistToStorage()
+                            onComplete(Result.success(updatedAvatar))
+                        }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            onComplete(Result.success(imageUri.toString()))
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w("AuthManager", "Avatar upload failed: ${e.message}")
+                withContext(Dispatchers.Main) {
+                    onComplete(Result.success(imageUri.toString()))
+                }
+            }
+        }
+    }
+
     fun recordGameTelemetry(log: CognitiveGameLog) {
         _telemetryLogs.update { it + log }
         recordDailyActivity()
@@ -1131,7 +1165,7 @@ object AuthManager {
         _fontScale.value = scale.coerceIn(0.85f, 1.35f)
     }
 
-    fun logout() {
+    fun logout(context: Context? = null) {
         _isLoggedIn.value = false
         _currentUser.value = null
         ApiClient.authToken = null
@@ -1150,6 +1184,19 @@ object AuthManager {
         _telemetryLogs.value = emptyList()
         val prefs = sharedPreferences ?: return
         prefs.edit().clear().apply()
+
+        if (context != null) {
+            try {
+                val gso = com.google.android.gms.auth.api.signin.GoogleSignInOptions.Builder(
+                    com.google.android.gms.auth.api.signin.GoogleSignInOptions.DEFAULT_SIGN_IN
+                ).requestEmail().build()
+                val client = com.google.android.gms.auth.api.signin.GoogleSignIn.getClient(context, gso)
+                client.signOut()
+                client.revokeAccess()
+            } catch (e: Exception) {
+                Log.w("AuthManager", "Google signout error: ${e.message}")
+            }
+        }
     }
 }
 

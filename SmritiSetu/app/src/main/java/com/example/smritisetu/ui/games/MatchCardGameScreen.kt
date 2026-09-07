@@ -82,6 +82,7 @@ fun MatchCardGameScreen(
     val hintsCount by AuthManager.hintsCount.collectAsState()
     val peekCount by AuthManager.peekCount.collectAsState()
     val skipLevelCount by AuthManager.skipLevelCount.collectAsState()
+    val highestUnlockedLevel by AuthManager.highestUnlockedLevel.collectAsState()
     val darkTheme = isAppInDarkTheme(themeMode)
     val strings = LocalAppStrings.current
 
@@ -363,11 +364,13 @@ fun MatchCardGameScreen(
                 val timeElapsedMs = System.currentTimeMillis() - levelStartTime
                 levelTimeElapsedSeconds = timeElapsedMs / 1000
 
-                // Mark all cards as matched
-                cards = cards.map { it.copy(isMatched = true, isFlipped = true) }
-
-                AuthManager.addRewards(xp = 15, coins = 200)
-                AuthManager.unlockNextLevel(currentLevel)
+                val isReplay = currentLevel < highestUnlockedLevel
+                if (isReplay) {
+                    AuthManager.addRewards(xp = 0, coins = 0)
+                } else {
+                    AuthManager.addRewards(xp = 15, coins = 200)
+                    AuthManager.unlockNextLevel(currentLevel)
+                }
 
                 showVictoryDialog = true
             }
@@ -443,9 +446,13 @@ fun MatchCardGameScreen(
                     )
                     AuthManager.recordGameTelemetry(telemetryLog)
 
-                    // Award 15 XP + 200 Coins & Unlock next level!
-                    AuthManager.addRewards(xp = 15, coins = 200)
-                    AuthManager.unlockNextLevel(currentLevel)
+                    val isReplay = currentLevel < highestUnlockedLevel
+                    if (isReplay) {
+                        AuthManager.addRewards(xp = 0, coins = 0)
+                    } else {
+                        AuthManager.addRewards(xp = 15, coins = 200)
+                        AuthManager.unlockNextLevel(currentLevel)
+                    }
 
                     showVictoryDialog = true
                 }
@@ -633,33 +640,50 @@ fun MatchCardGameScreen(
                         color = MaterialTheme.colorScheme.onSurface
                     )
 
-                    // Rewards Summary
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    ) {
+                    val isReplay = currentLevel < highestUnlockedLevel
+                    if (isReplay) {
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.primaryContainer
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                text = strings.xpReward,
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                                text = "Replayed Level • 0 XP & 0 Coins",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                textAlign = TextAlign.Center
                             )
                         }
-
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.tertiaryContainer
+                    } else {
+                        // Rewards Summary
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.padding(vertical = 4.dp)
                         ) {
-                            Text(
-                                text = strings.coinsReward,
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                            )
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer
+                            ) {
+                                Text(
+                                    text = strings.xpReward,
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                                )
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.tertiaryContainer
+                            ) {
+                                Text(
+                                    text = strings.coinsReward,
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                                )
+                            }
                         }
                     }
 

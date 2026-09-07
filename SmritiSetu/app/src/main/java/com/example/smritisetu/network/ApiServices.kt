@@ -1,5 +1,6 @@
 package com.example.smritisetu.network
 
+import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -29,6 +30,10 @@ interface UserApiService {
 
     @PUT("user/profile")
     suspend fun updateProfile(@Body request: UpdateProfileRequestDto): Response<AuthResponseDto>
+
+    @Multipart
+    @POST("user/avatar/upload")
+    suspend fun uploadAvatar(@Part file: MultipartBody.Part): Response<AuthResponseDto>
 
     @POST("user/perks/use")
     suspend fun usePerk(@Body request: UsePerkRequestDto): Response<UsePerkResponseDto>
