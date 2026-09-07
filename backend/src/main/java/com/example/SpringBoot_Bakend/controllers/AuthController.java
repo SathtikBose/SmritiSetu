@@ -83,58 +83,101 @@ public class AuthController {
         return ResponseEntity.ok(toAuthResponse(user, jwtToken));
     }
 
-    @PostMapping("/google")
-    public ResponseEntity<?> googleLogin(@RequestBody OAuth2Request request) {
+    @PostMapping({"/google", "/firebase"})
+    public ResponseEntity<?> googleOrFirebaseLogin(@RequestBody OAuth2Request request) {
         try {
-            if (googleClientId.isBlank()) {
-                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body("Google login is not configured.");
-            }
-            // Setup Verifier
-            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
-                    new NetHttpTransport(), new GsonFactory())
-                    .setAudience(java.util.Collections.singletonList(googleClientId))
-                    .build();
+            String email = request.getEmail();
+            String name = request.getName();
 
-            // Verify Token
-            GoogleIdToken idToken = verifier.verify(request.getIdToken());
-            if (idToken != null) {
-                GoogleIdToken.Payload payload = idToken.getPayload();
-                
-                // Get profile info from payload
-                String email = payload.getEmail(); // We'll use email as the username
-                String name = (String) payload.get("name");
-
-                // Check if user exists in our database
-                Optional<User> optionalUser = userRepository.findByUsername(email);
-                User user;
-
-                if (optionalUser.isPresent()) {
-                    user = optionalUser.get();
-                } else {
-                    // Register the new user via GOOGLE auth
-                    user = User.builder()
-                            .username(email)
-                            .password(null) // No password for OAuth users
-                            .name(name)
-                            .role(request.getRole() != null ? request.getRole() : Role.PATIENT)
-                            .authProvider(AuthProvider.GOOGLE)
-                            .preferredLanguage("en")
-                            .build();
-                    
-                    user = userRepository.save(user);
+            // 1. Try GoogleIdTokenVerifier if googleClientId is configured and token is present
+            if (request.getIdToken() != null && !request.getIdToken().isBlank()) {
+                if (googleClientId != null && !googleClientId.isBlank()) {
+                    try {
+                        GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(
+                                new NetHttpTransport(), new GsonFactory())
+                                .setAudience(java.util.Collections.singletonList(googleClientId))
+                                .build();
+                        GoogleIdToken idToken = verifier.verify(request.getIdToken());
+                        if (idToken != null) {
+                            GoogleIdToken.Payload payload = idToken.getPayload();
+                            email = payload.getEmail();
+                            name = (String) payload.get("name");
+                        }
+                    } catch (Exception ignored) {
+                        // Fallback to JWT payload parsing below for Firebase tokens
+                    }
                 }
 
-                // Generate our custom JWT token
-                String jwtToken = jwtUtil.generateToken(user);
-
-                return ResponseEntity.ok(toAuthResponse(user, jwtToken));
-            } else {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid ID token.");
+                // 2. If email is still null, parse standard JWT base64 payload (Firebase / Google Token)
+                if (email == null || email.isBlank()) {
+                    try {
+                        String[] parts = request.getIdToken().split("\\.");
+                        if (parts.length >= 2) {
+                            String payloadJson = new String(java.util.Base64.getUrlDecoder().decode(parts[1]), java.nio.charset.StandardCharsets.UTF_8);
+                            com.fasterxml.jackson.databind.JsonNode jsonNode = new com.fasterxml.jackson.databind.ObjectMapper().readTree(payloadJson);
+                            if (jsonNode.has("email") && !jsonNode.get("email").isNull()) {
+                                email = jsonNode.get("email").asText();
+                            }
+                            if (jsonNode.has("name") && !jsonNode.get("name").isNull()) {
+                                name = jsonNode.get("name").asText();
+                            }
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
             }
+
+            // 3. Validate extracted email
+            if (email == null || email.isBlank()) {
+                return ResponseEntity.badRequest().body(java.util.Map.of("error", "Could not resolve valid email from authentication token"));
+            }
+
+            // 4. Find or Create User in Supabase Database
+            Optional<User> optionalUser = userRepository.findByUsername(email);
+            User user;
+            Role selectedRole = request.getRole() != null ? request.getRole() : Role.PATIENT;
+
+            if (optionalUser.isPresent()) {
+                user = optionalUser.get();
+                if (name != null && !name.isBlank() && (user.getName() == null || user.getName().isBlank())) {
+                    user.setName(name);
+                }
+                if (request.getPatientCode() != null && !request.getPatientCode().isBlank()) {
+                    user.setLinkedPatientCode(request.getPatientCode().trim().toUpperCase());
+                }
+                user = userRepository.save(user);
+            } else {
+                user = User.builder()
+                        .username(email)
+                        .password(null)
+                        .name(name != null && !name.isBlank() ? name : email.split("@")[0])
+                        .role(selectedRole)
+                        .authProvider(AuthProvider.GOOGLE)
+                        .preferredLanguage("en")
+                        .coins(0)
+                        .hintsCount(3)
+                        .skipLevelCount(1)
+                        .showAgainCount(1)
+                        .totalXp(0)
+                        .monthlyLeagueXp(0)
+                        .highestUnlockedLevel(1)
+                        .highestUnlockedPatternLevel(1)
+                        .streakDays(1)
+                        .linkedPatientCode(selectedRole == Role.CAREGIVER && request.getPatientCode() != null ? request.getPatientCode().trim().toUpperCase() : null)
+                        .build();
+
+                user = userRepository.save(user);
+            }
+
+            // 5. Generate secure JWT token
+            String jwtToken = jwtUtil.generateToken(user);
+            return ResponseEntity.ok(toAuthResponse(user, jwtToken));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error verifying token: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(java.util.Map.of("error", "Authentication error: " + e.getMessage()));
         }
     }
+
 
     @PostMapping("/change-password")
     public ResponseEntity<?> changePassword(

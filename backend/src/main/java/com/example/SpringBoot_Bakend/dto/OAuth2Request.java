@@ -11,6 +11,11 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class OAuth2Request {
-    private String idToken; // Token received from Google on the frontend
-    private Role role; // Optional: specify role during first-time OAuth registration
+    private String idToken; // Token received from Google / Firebase on frontend
+    private String email; // Optional direct email from Firebase Auth user
+    private String name; // Optional display name from Firebase Auth user
+    private String firebaseUid; // Firebase User UID
+    private String patientCode; // Optional patient link code for Caregivers
+    private Role role; // Optional: PATIENT or CAREGIVER
 }
+
