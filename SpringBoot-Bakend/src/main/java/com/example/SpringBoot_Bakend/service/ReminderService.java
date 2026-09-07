@@ -58,6 +58,29 @@ public class ReminderService {
         return mapToResponse(reminderRepository.save(reminder));
     }
 
+    public ReminderResponse toggleReminder(UUID caregiverId, UUID patientId, UUID reminderId) {
+        caregiverService.verifyLink(caregiverId, patientId);
+        Reminder reminder = reminderRepository.findById(reminderId)
+                .filter(value -> value.getUser().getId().equals(patientId))
+                .orElseThrow(() -> new IllegalArgumentException("Reminder not found for this patient."));
+        reminder.setActive(!Boolean.TRUE.equals(reminder.getActive()));
+        return mapToResponse(reminderRepository.save(reminder));
+    }
+
+    public void deleteReminder(UUID caregiverId, UUID patientId, UUID reminderId) {
+        caregiverService.verifyLink(caregiverId, patientId);
+        Reminder reminder = reminderRepository.findById(reminderId)
+                .filter(value -> value.getUser().getId().equals(patientId))
+                .orElseThrow(() -> new IllegalArgumentException("Reminder not found for this patient."));
+        reminderRepository.delete(reminder);
+    }
+
+    public List<ReminderResponse> getOwnReminders(UUID patientId) {
+        return reminderRepository.findAllByUserId(patientId).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
     private ReminderResponse mapToResponse(Reminder reminder) {
         return ReminderResponse.builder()
                 .id(reminder.getId())

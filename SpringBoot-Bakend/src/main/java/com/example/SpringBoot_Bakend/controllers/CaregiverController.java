@@ -62,4 +62,9 @@ public class CaregiverController {
         // This endpoint requires ROLE_CAREGIVER (enforced in SecurityConfig)
         return ResponseEntity.ok(caregiverService.getDifficultyLogs(caregiver.getId(), patientId));
     }
+
+    @GetMapping("/patient/summary")
+    public ResponseEntity<?> getLinkedPatientSummary(@AuthenticationPrincipal User caregiver) {
+        return ResponseEntity.ok(caregiverService.getLinkedPatientSummary(caregiver.getId()));
+    }
 }

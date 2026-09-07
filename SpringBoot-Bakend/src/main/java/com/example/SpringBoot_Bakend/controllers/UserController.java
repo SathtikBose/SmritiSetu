@@ -28,6 +28,42 @@ public class UserController {
         return ResponseEntity.ok(toResponse(userRepository.save(user)));
     }
 
+    @PostMapping("/perks/use")
+    public ResponseEntity<?> usePerk(@AuthenticationPrincipal User user, @RequestBody java.util.Map<String, String> body) {
+        String perkType = body.get("perkType");
+        if (perkType == null) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", "perkType is required"));
+        }
+
+        String typeUpper = perkType.toUpperCase();
+        int remaining;
+
+        if (typeUpper.contains("HINT")) {
+            if (user.getHintsCount() <= 0) {
+                return ResponseEntity.badRequest().body(java.util.Map.of("error", "No Hint perks in inventory."));
+            }
+            user.setHintsCount(user.getHintsCount() - 1);
+            remaining = user.getHintsCount();
+        } else if (typeUpper.contains("PEEK") || typeUpper.contains("SHOW_AGAIN")) {
+            if (user.getShowAgainCount() <= 0) {
+                return ResponseEntity.badRequest().body(java.util.Map.of("error", "No Peek/Show Again perks in inventory."));
+            }
+            user.setShowAgainCount(user.getShowAgainCount() - 1);
+            remaining = user.getShowAgainCount();
+        } else if (typeUpper.contains("SKIP")) {
+            if (user.getSkipLevelCount() <= 0) {
+                return ResponseEntity.badRequest().body(java.util.Map.of("error", "No Skip Level perks in inventory."));
+            }
+            user.setSkipLevelCount(user.getSkipLevelCount() - 1);
+            remaining = user.getSkipLevelCount();
+        } else {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", "Unknown perk type: " + perkType));
+        }
+
+        userRepository.save(user);
+        return ResponseEntity.ok(java.util.Map.of("success", true, "remainingCount", remaining));
+    }
+
     private UserProfileResponse toResponse(User user) {
         return UserProfileResponse.builder()
                 .id(user.getId())
@@ -50,6 +86,8 @@ public class UserController {
                 .avatarUri(user.getAvatarUri())
                 .highestUnlockedLevel(user.getHighestUnlockedLevel())
                 .highestUnlockedPatternLevel(user.getHighestUnlockedPatternLevel())
+                .streakDays(user.getStreakDays())
+                .lastActiveDate(user.getLastActiveDate())
                 .build();
     }
 }

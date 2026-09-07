@@ -113,4 +113,45 @@ public class CaregiverService {
                         .build())
                 .collect(Collectors.toList());
     }
+
+    public java.util.Map<String, Object> getLinkedPatientSummary(UUID caregiverId) {
+        User caregiver = userRepository.findById(caregiverId)
+                .orElseThrow(() -> new IllegalArgumentException("Caregiver not found"));
+
+        User patient = null;
+        if (caregiver.getLinkedPatientCode() != null) {
+            patient = userRepository.findByPatientLinkCode(caregiver.getLinkedPatientCode()).orElse(null);
+        }
+        if (patient == null) {
+            List<CaregiverLink> links = linkRepository.findByCaregiverId(caregiverId);
+            if (!links.isEmpty()) {
+                patient = links.get(0).getPatient();
+            }
+        }
+
+        if (patient == null) {
+            return java.util.Map.of("hasLinkedPatient", false, "message", "No patient linked yet.");
+        }
+
+        List<GameProgress> progressList = progressRepository.findAllByUserId(patient.getId());
+        int highestLevel = progressList.stream().mapToInt(GameProgress::getCurrentLevel).max().orElse(1);
+
+        java.util.Map<String, Object> summary = new java.util.HashMap<>();
+        summary.put("hasLinkedPatient", true);
+        summary.put("patientId", patient.getId());
+        summary.put("name", patient.getName());
+        summary.put("linkCode", patient.getPatientLinkCode());
+        summary.put("age", patient.getAge() != null ? patient.getAge() : 68);
+        summary.put("gender", patient.getGender() != null ? patient.getGender() : "Female");
+        summary.put("leagueTier", patient.getLeagueTier());
+        summary.put("totalXp", patient.getTotalXp());
+        summary.put("monthlyLeagueXp", patient.getMonthlyLeagueXp());
+        summary.put("coins", patient.getCoins());
+        summary.put("highestLevelReached", highestLevel);
+        summary.put("highestUnlockedLevel", patient.getHighestUnlockedLevel());
+        summary.put("highestUnlockedPatternLevel", patient.getHighestUnlockedPatternLevel());
+        summary.put("streakDays", patient.getStreakDays() != null ? patient.getStreakDays() : 0);
+
+        return summary;
+    }
 }

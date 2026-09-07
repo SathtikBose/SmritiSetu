@@ -608,14 +608,14 @@ public class DailyStreakService {
 
 ## 📌 5. Backend Developer Action Checklist
 
-- [ ] **Step 1**: Add `patientLinkCode`, `coins`, `hintsCount`, `skipLevelCount`, `showAgainCount`, `totalXp`, `monthlyLeagueXp`, `leagueTier`, `lastSeasonResetMonth`, `streakDays`, `lastActiveDate`, `phone`, `gender`, `age`, `avatarUri`, `highestUnlockedLevel`, `highestUnlockedPatternLevel` to `User.java`.
-- [ ] **Step 2**: Auto-generate unique `SM-XXXX` code on `POST /auth/register` for Patient accounts.
-- [ ] **Step 3**: Implement `POST /caregiver/link-by-code` and `GET /caregiver/patient/summary`.
-- [ ] **Step 4**: Implement `GET /shop/items`, `POST /shop/buy`, and `POST /user/perks/use` (including `PERK_HINT` 1,000 coins, `PERK_SHOW_AGAIN` 800 coins, and `PERK_SKIP` 2,000 coins).
-- [ ] **Step 5**: Implement `POST /auth/change-password`.
-- [ ] **Step 6**: Update `LevelAttemptRequest` to accept `timeTakenMs`, `idleHintsCount`, `perkHintsCount`, and Game 2 pattern telemetry (`previewDurationSec`, `showAgainUsedCount`).
-- [ ] **Step 7**: Configure `WebClient` / `RestTemplate` service to call AI model on port `8000` on every 5th level.
-- [ ] **Step 8**: Award **+15 XP** and **+200 Coins** in `GameService.processLevelAttempt`, incrementing `monthlyLeagueXp` and promoting `leagueTier`.
-- [ ] **Step 9**: Implement Date 1 Monthly League Reset Cron `@Scheduled(cron = "0 0 0 1 * ?")` and endpoints `GET /api/v1/league/status` and `GET /api/v1/league/leaderboard`.
-- [ ] **Step 10**: Integrate `DailyStreakService` into `GameService` to calculate dynamic consecutive daily streaks upon level attempts and telemetry logs.
+- [x] **Step 1**: Add `patientLinkCode`, `coins`, `hintsCount`, `skipLevelCount`, `showAgainCount`, `totalXp`, `monthlyLeagueXp`, `leagueTier`, `lastSeasonResetMonth`, `streakDays`, `lastActiveDate`, `phone`, `gender`, `age`, `avatarUri`, `highestUnlockedLevel`, `highestUnlockedPatternLevel` to `User.java`.
+- [x] **Step 2**: Auto-generate unique `SM-XXXX` code on `POST /auth/register` for Patient accounts.
+- [x] **Step 3**: Implement `POST /caregiver/link-by-code` and `GET /caregiver/patient/summary`.
+- [x] **Step 4**: Implement `GET /shop/items`, `POST /shop/buy`, and `POST /user/perks/use` (including `PERK_HINT` 1,000 coins, `PERK_SHOW_AGAIN` 800 coins, and `PERK_SKIP` 2,000 coins).
+- [x] **Step 5**: Implement `POST /auth/change-password`, `POST /auth/forgot-password`, and `POST /auth/verify-otp`.
+- [x] **Step 6**: Update `LevelAttemptRequest` to accept `timeTakenMs`, `idleHintsCount`, `perkHintsCount`, and Game 2 pattern telemetry (`previewDurationSec`, `peekUsedCount`).
+- [x] **Step 7**: Configure `CognitiveAiService` / `RestTemplate` service to call AI model on Render (`https://smritisetuai.onrender.com`) on every 5th level.
+- [x] **Step 8**: Award **+15 XP** and **+200 Coins** in `GameService.processLevelAttempt`, incrementing `monthlyLeagueXp` and promoting `leagueTier`.
+- [x] **Step 9**: Implement Date 1 Monthly League Reset Cron `@Scheduled(cron = "0 0 0 1 * ?")` and endpoints `GET /api/v1/league/status` and `GET /api/v1/league/leaderboard`.
+- [x] **Step 10**: Integrate `DailyStreakService` into `GameService` to calculate dynamic consecutive daily streaks upon level attempts and telemetry logs.
 

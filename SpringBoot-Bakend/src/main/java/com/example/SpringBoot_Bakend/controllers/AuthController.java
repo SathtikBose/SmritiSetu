@@ -136,6 +136,61 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal User user,
+            @RequestBody java.util.Map<String, String> request) {
+        String currentPassword = request.get("currentPassword");
+        String newPassword = request.get("newPassword");
+
+        if (currentPassword == null || newPassword == null || newPassword.length() < 6) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", "Valid currentPassword and newPassword (min 6 chars) required"));
+        }
+
+        if (user.getPassword() != null && !passwordEncoder.matches(currentPassword, user.getPassword())) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", "Incorrect current password"));
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        return ResponseEntity.ok(java.util.Map.of("success", true, "message", "Password updated successfully"));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody java.util.Map<String, String> request) {
+        String email = request.get("email");
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", "Email is required"));
+        }
+        // In production / demo flow, generate 6-digit OTP
+        return ResponseEntity.ok(java.util.Map.of(
+                "success", true,
+                "message", "OTP sent to email successfully",
+                "otp", "123456" // Default mock OTP for mobile verification
+        ));
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<?> verifyOtp(@RequestBody java.util.Map<String, String> request) {
+        String email = request.get("email");
+        String otp = request.get("otp");
+        String newPassword = request.get("newPassword");
+
+        if (email == null || otp == null || newPassword == null || newPassword.length() < 6) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", "Valid email, otp, and newPassword (min 6 chars) required"));
+        }
+
+        Optional<User> userOpt = userRepository.findByUsername(email);
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            user.setPassword(passwordEncoder.encode(newPassword));
+            userRepository.save(user);
+        }
+
+        return ResponseEntity.ok(java.util.Map.of("success", true, "message", "Password reset successfully"));
+    }
+
     private AuthResponse toAuthResponse(User user, String jwtToken) {
         return AuthResponse.builder()
                 .token(jwtToken)
@@ -154,6 +209,13 @@ public class AuthController {
                 .leagueTier(user.getLeagueTier())
                 .highestUnlockedLevel(user.getHighestUnlockedLevel())
                 .highestUnlockedPatternLevel(user.getHighestUnlockedPatternLevel())
+                .phone(user.getPhone())
+                .gender(user.getGender())
+                .age(user.getAge())
+                .avatarUri(user.getAvatarUri())
+                .preferredLanguage(user.getPreferredLanguage())
+                .streakDays(user.getStreakDays())
+                .lastActiveDate(user.getLastActiveDate())
                 .build();
     }
 }

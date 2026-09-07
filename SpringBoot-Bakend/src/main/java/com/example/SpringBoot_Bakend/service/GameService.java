@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Service
@@ -19,38 +20,58 @@ public class GameService {
     private final LeagueStatusRepository leagueRepository;
     private final UserRepository userRepository;
     private final AIDifficultyService aiDifficultyService;
+    private final DailyStreakService dailyStreakService;
 
     @Transactional
     public LevelAttemptResponse processLevelAttempt(User user, LevelAttemptRequest request) {
-        Game game = gameRepository.findById(request.getGameId())
-                .orElseThrow(() -> new RuntimeException("Game not found!"));
+        // Resolve Game by ID or fallback by name/type
+        Game game = null;
+        if (request.getGameId() != null) {
+            game = gameRepository.findById(request.getGameId()).orElse(null);
+        }
+        if (game == null) {
+            String name = request.getGameName() != null ? request.getGameName() : "MatchTheCard";
+            game = gameRepository.findByName(name).orElseGet(() -> {
+                Game g = Game.builder()
+                        .name(name)
+                        .type("COGNITIVE")
+                        .build();
+                return gameRepository.save(g);
+            });
+        }
         
         // Find or create progress profile for this specific game
         GameProgress progress = progressRepository.findByUserIdAndGameId(user.getId(), game.getId())
                 .orElseGet(() -> progressRepository.save(GameProgress.builder()
                         .user(user)
                         .game(game)
-                        .currentLevel(1)
+                        .currentLevel(request.getLevel() != null ? request.getLevel() : 1)
                         .currentDifficulty(1)
                         .build()));
 
-        // Calculate XP (Elderly patients are rewarded with +15 XP and +200 coins per level)
-        int xpEarned = Math.max(15 - request.getHintsUsed() * 2, 5);
+        int hintsUsed = request.getEffectiveHintsUsed();
+        int timeTaken = request.getEffectiveTimeTakenSec();
+        int tries = request.getEffectiveTriesCount();
+
+        // Calculate XP (Elderly patients earn +15 XP and +200 coins per level)
+        int xpEarned = Math.max(15 - hintsUsed * 2, 5);
         int coinsEarned = 200;
         
         // Save the telemetry attempt
         LevelAttempt attempt = LevelAttempt.builder()
                 .progress(progress)
-                .timeTakenSec(request.getTimeTakenSec())
-                .hintsUsed(request.getHintsUsed())
-                .triesCount(request.getTriesCount())
+                .timeTakenSec(timeTaken)
+                .hintsUsed(hintsUsed)
+                .triesCount(tries)
                 .xpEarned(xpEarned)
                 .playedAt(LocalDateTime.now())
                 .syncedOffline(request.getSyncedOffline() != null ? request.getSyncedOffline() : false)
                 .build();
         attemptRepository.save(attempt);
         
-        // Update user state directly
+        // Update user streak & rewards
+        dailyStreakService.recordDailyActivity(user, LocalDate.now());
+
         int currentCoins = user.getCoins() != null ? user.getCoins() : 1000;
         int currentTotalXp = user.getTotalXp() != null ? user.getTotalXp() : 1450;
         int currentMonthlyXp = user.getMonthlyLeagueXp() != null ? user.getMonthlyLeagueXp() : 0;
@@ -74,13 +95,17 @@ public class GameService {
         user.setLeagueTier(tierName);
 
         // Progress level counter
-        int completedLevel = progress.getCurrentLevel();
+        int completedLevel = request.getLevel() != null ? request.getLevel() : progress.getCurrentLevel();
         int nextLevel = completedLevel + 1;
-        progress.setCurrentLevel(nextLevel);
+        progress.setCurrentLevel(Math.max(progress.getCurrentLevel(), nextLevel));
         progress.setLastPlayed(LocalDateTime.now());
         
         // Update User highest level tracker
-        if (game.getGameType() != null && "pattern".equalsIgnoreCase(game.getGameType().name())) {
+        boolean isPattern = (game.getName() != null && game.getName().toLowerCase().contains("pattern"))
+                || (request.getPatternLength() != null)
+                || (request.getGameName() != null && request.getGameName().toLowerCase().contains("pattern"));
+
+        if (isPattern) {
             if (user.getHighestUnlockedPatternLevel() == null || nextLevel > user.getHighestUnlockedPatternLevel()) {
                 user.setHighestUnlockedPatternLevel(nextLevel);
             }
@@ -98,21 +123,37 @@ public class GameService {
         league.setCurrentLeague(tierName);
         leagueRepository.save(league);
         
-        // Every 5th level, run the Rule-Based AI Difficulty Engine
+        // Every 5th level, run AI Difficulty Engine
         String aiReasoning = null;
+        String predictedDifficulty = "NORMAL";
         if (completedLevel % 5 == 0) {
             DifficultyLog log = aiDifficultyService.evaluateAndAdjustDifficulty(progress);
-            if (log != null) aiReasoning = log.getReasoningText();
+            if (log != null) {
+                aiReasoning = log.getReasoningText();
+                predictedDifficulty = log.getAiDecision();
+            }
         }
         
         progressRepository.save(progress);
         
         return LevelAttemptResponse.builder()
+                .passed(true)
                 .xpEarned(xpEarned)
-                .newDifficulty(progress.getCurrentDifficulty())
-                .nextLevel(progress.getCurrentLevel())
+                .coinsEarned(coinsEarned)
+                .totalCoins(user.getCoins())
+                .totalXp(user.getTotalXp())
+                .monthlyLeagueXp(user.getMonthlyLeagueXp())
+                .leagueTier(tierName)
                 .newLeague(tierName)
+                .highestUnlockedLevel(user.getHighestUnlockedLevel())
+                .highestUnlockedPatternLevel(user.getHighestUnlockedPatternLevel())
+                .nextUnlockedLevel(isPattern ? user.getHighestUnlockedPatternLevel() : user.getHighestUnlockedLevel())
+                .nextLevel(nextLevel)
+                .newDifficulty(progress.getCurrentDifficulty())
+                .predictedDifficulty(predictedDifficulty)
+                .difficultyReasoning(aiReasoning)
                 .aiReasoningMessage(aiReasoning)
+                .streakDays(user.getStreakDays())
                 .build();
     }
 

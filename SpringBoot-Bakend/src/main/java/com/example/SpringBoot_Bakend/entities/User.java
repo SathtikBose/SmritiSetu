@@ -86,6 +86,13 @@ public class User implements UserDetails {
     @Builder.Default
     private String lastSeasonResetMonth = "2026-09";
 
+    @Column(name = "streak_days", nullable = false)
+    @Builder.Default
+    private Integer streakDays = 0;
+
+    @Column(name = "last_active_date", length = 10)
+    private String lastActiveDate;
+
     @Column
     private String phone;
 

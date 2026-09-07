@@ -29,4 +29,11 @@ public class AuthResponse {
     private String leagueTier;
     private Integer highestUnlockedLevel;
     private Integer highestUnlockedPatternLevel;
+    private String phone;
+    private String gender;
+    private Integer age;
+    private String avatarUri;
+    private String preferredLanguage;
+    private Integer streakDays;
+    private String lastActiveDate;
 }

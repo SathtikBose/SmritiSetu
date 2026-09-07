@@ -27,4 +27,6 @@ public class UserProfileResponse {
     private String avatarUri;
     private Integer highestUnlockedLevel;
     private Integer highestUnlockedPatternLevel;
+    private Integer streakDays;
+    private String lastActiveDate;
 }

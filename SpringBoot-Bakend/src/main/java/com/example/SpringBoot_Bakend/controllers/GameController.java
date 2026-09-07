@@ -13,32 +13,53 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/game")
 @RequiredArgsConstructor
 public class GameController {
     
     private final GameService gameService;
     private final GameRepository gameRepository;
 
-    @GetMapping
+    @GetMapping({"/game", "/api/v1/games"})
     public ResponseEntity<java.util.List<GameResponse>> games() {
         return ResponseEntity.ok(gameRepository.findAll().stream().map(game -> GameResponse.builder()
                 .id(game.getId()).name(game.getName()).type(game.getType()).build()).toList());
     }
 
-    @PostMapping("/level/complete")
+    @PostMapping({"/game/level/complete", "/api/v1/game/level/attempt"})
     public ResponseEntity<LevelAttemptResponse> completeLevel(
-            @AuthenticationPrincipal User user, // Automatically injected from the validated JWT token!
-            @Valid @RequestBody LevelAttemptRequest request) {
+            @AuthenticationPrincipal User user,
+            @RequestBody LevelAttemptRequest request) {
             
         LevelAttemptResponse response = gameService.processLevelAttempt(user, request);
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/level/complete-bulk")
+    @PostMapping("/api/v1/games/match-card/level-complete")
+    public ResponseEntity<LevelAttemptResponse> completeMatchCardLevel(
+            @AuthenticationPrincipal User user,
+            @RequestBody LevelAttemptRequest request) {
+        if (request.getGameName() == null) {
+            request.setGameName("MatchTheCard");
+        }
+        LevelAttemptResponse response = gameService.processLevelAttempt(user, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/api/v1/games/pattern/level-complete")
+    public ResponseEntity<LevelAttemptResponse> completePatternLevel(
+            @AuthenticationPrincipal User user,
+            @RequestBody LevelAttemptRequest request) {
+        if (request.getGameName() == null) {
+            request.setGameName("PatternMatching");
+        }
+        LevelAttemptResponse response = gameService.processLevelAttempt(user, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping({"/game/level/complete-bulk", "/api/v1/game/level/complete-bulk"})
     public ResponseEntity<java.util.List<LevelAttemptResponse>> completeLevelBulk(
             @AuthenticationPrincipal User user,
-            @RequestBody java.util.List<@Valid LevelAttemptRequest> requests) {
+            @RequestBody java.util.List<LevelAttemptRequest> requests) {
             
         java.util.List<LevelAttemptResponse> responses = gameService.processBulkLevelAttempts(user, requests);
         return ResponseEntity.ok(responses);
