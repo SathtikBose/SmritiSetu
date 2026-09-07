@@ -1,77 +1,136 @@
-# SmritiSetu (??????????) ??
+Ôªø# SmritiSetu (‡§∏‡•ç‡§Æ‡•É‡§§‡§ø ‡§∏‡•á‡§§‡•Å) üß†üåâ
+> **AI-Powered Cognitive Health & Dementia Care Companion**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Android](https://img.shields.io/badge/Android-Jetpack%20Compose-green.svg)](https://developer.android.com/jetpack/compose)
-[![Spring Boot](https://img.shields.io/badge/Backend-Spring%20Boot%203.3.5-brightgreen.svg)](https://spring.io/projects/spring-boot)
-[![FastAPI](https://img.shields.io/badge/AI%20Microservice-FastAPI%20Python%203.11-teal.svg)](https://fastapi.tiangolo.com)
-
-**AI-Driven Cognitive Gaming & Assistive Memory Platform for Dementia & Alzheimer's Care.**
-
-SmritiSetu ("Bridge of Memory") delivers clinically grounded brain stimulation through gentle, adaptive cognitive exercises tailored for elders and patients in the North-East & Pan-India multilingual regions. An intelligent AI model continuously calibrates task difficulty in real time based on response latencies, error patterns, and hint usage.
+[![Android](https://img.shields.io/badge/Android-Jetpack%20Compose-3DDC84?logo=android&logoColor=white)](SmritiSetu/)
+[![Backend](https://img.shields.io/badge/Backend-Spring%20Boot%203-6DB33F?logo=springboot&logoColor=white)](backend/)
+[![AI Model](https://img.shields.io/badge/AI%20Service-FastAPI%20%2F%20Python-009688?logo=fastapi&logoColor=white)](model/)
+[![Database](https://img.shields.io/badge/Database-PostgreSQL%20%2F%20Supabase-336791?logo=postgresql&logoColor=white)](https://supabase.com)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
 
-## ?? Clean Repository Structure
+## üìñ Overview
+
+**SmritiSetu** ("Bridge to Memory") is a holistic digital therapeutic platform engineered to support individuals living with Mild Cognitive Impairment (MCI), early-stage dementia, and age-related memory decline. By combining **clinically grounded cognitive training**, **adaptive Machine Learning difficulty calibration**, and **real-time caregiver monitoring**, SmritiSetu delivers a safe, empowering, and engaging environment for patients and peace of mind for families.
+
+---
+
+## üèõÔ∏è Project Architecture
+
+The repository is structured into modular, production-ready components:
 
 ```
 SmritiSetu/
-+-- SmritiSetu/              # Android Application (Kotlin, Jetpack Compose, Material 3, Navigation 3)
-¶   +-- app/src/main/
-¶   ¶   +-- java/com/example/smritisetu/
-¶   ¶   ¶   +-- data/       # State Management, AuthManager, SharedPreferences, Localized Strings (12 Languages)
-¶   ¶   ¶   +-- network/    # Retrofit, OkHttp JWT Interceptor, DTOs & API Clients
-¶   ¶   ¶   +-- theme/      # Glassmorphic UI, Themes, Adaptive Typography & Scaling
-¶   ¶   ¶   +-- ui/         # Role-based Screens (Patient Games, Leagues, Caregiver Dashboard)
-¶   ¶   +-- res/            # Vector drawables, League Badges, Layout resources
-¶   +-- gradle/             # Version Catalog (libs.versions.toml) & Gradle 9.1
-¶
-+-- backend/                 # Backend REST API (Java 17, Spring Boot 3.3.5, Spring Security 6)
-¶   +-- src/main/java/com/example/SpringBoot_Bakend/
-¶   ¶   +-- config/         # JWT Security, WebConfig, Exception Handlers
-¶   ¶   +-- controllers/    # Auth, User, Game, League, Caregiver & Root Health Endpoints
-¶   ¶   +-- dto/            # Strongly typed Request/Response Payloads
-¶   ¶   +-- entities/       # JPA Entities (User, GameProgress, Reminder, LeagueStatus, DifficultyLog)
-¶   ¶   +-- repository/     # Spring Data JPA PostgreSQL Repositories
-¶   ¶   +-- service/        # Game Mechanics, Telemetry, Daily Streaks, AI Orchestration
-¶   +-- src/main/resources/ # application.properties with environment bindings
-¶   +-- .env.example        # Reference environment variables for cloud deployment
-¶   +-- pom.xml             # Maven Build Configuration
-¶
-+-- model/                   # AI Difficulty Engine (Python 3.11, FastAPI, Scikit-learn, XGBoost)
-¶   +-- app.py              # FastAPI Microservice & Prediction Endpoints
-¶   +-- predictor.py        # ML Model Inference & Adaptive Difficulty Logic
-¶   +-- requirements.txt    # Python dependencies
-¶
-+-- docs/                    # Project Documentation
-¶   +-- PRD.md              # Product Requirements Document
-¶   +-- SYSTEM_DESIGN.md    # Architecture, Schema Diagrams & Sequence Flows
-¶   +-- API_ENDPOINTS.md    # Full REST API Reference & Request/Response Schemas
-¶   +-- DEPLOYMENT_GUIDE.md # Cloud Deployment Guide (Render, Supabase, Neon)
-¶
-+-- render.yaml              # Render Cloud Infrastructure as Code Configuration
+‚îú‚îÄ‚îÄ SmritiSetu/         # üì± Native Android App (Kotlin, Jetpack Compose, Room DB, WorkManager)
+‚îú‚îÄ‚îÄ backend/            # ‚öôÔ∏è Enterprise REST API (Spring Boot 3, Java 17, JPA, PostgreSQL)
+‚îú‚îÄ‚îÄ model/              # ü§ñ Cognitive AI Microservice (Python, FastAPI, Scikit-Learn)
+‚îú‚îÄ‚îÄ docs/               # üìö Comprehensive Project Documentation & Architecture
+‚îÇ   ‚îú‚îÄ‚îÄ PRD.md
+‚îÇ   ‚îú‚îÄ‚îÄ SYSTEM_DESIGN.md
+‚îÇ   ‚îú‚îÄ‚îÄ API_ENDPOINTS.md
+‚îÇ   ‚îî‚îÄ‚îÄ DEPLOYMENT_GUIDE.md
+‚îî‚îÄ‚îÄ README.md           # üìÑ Root Project Guide
 ```
 
 ---
 
-## ?? Key Capabilities
+## ‚ú® Key Features
 
-1. **Role-Based Experience**:
-   - **Patient Mode**: Accessible, high-contrast gameplay (Match Card, Sequence Memory, Pattern Recall), leagues (Bronze ? Legend), shop perks, and unique 6-digit Patient Link Code (`SM-XXXX`).
-   - **Caregiver Dashboard**: Single-screen monitoring showing patient status, XP, league standings, max levels reached, AI cognitive history, and daily care reminders (medicine, hydration, activity).
-2. **Multilingual Inclusivity**: Full localizations across 12 Indian & North-Eastern languages (Assamese, Bengali, Bodo, Garo, Hindi, Khasi, Kokborok, Manipuri/Meitei, Mizo, Nepali, Nagamese, English).
-3. **Machine Learning Difficulty Calibration**: Evaluates user telemetry every 5 levels to adjust grid size, preview duration, and distraction density safely without frustration.
-4. **Offline-First Resilience**: Local persistence with background cloud synchronization upon connectivity.
+### 1. üë¥ Elderly-Friendly & Accessible Interface
+- **High-Contrast Design & Scalable Typography**: High-visibility color schemes, large touch targets (min 48dp), and adjustable text sizes.
+- **Cognitive Ease**: Minimal distraction, large visual icons, multilingual support, and voice prompts.
+
+### 2. üé≠ Role-Based Architecture
+- **Patient Experience**: Full access to cognitive training games, league leaderboards, personal streaks, rewards, and care reminders. Generates a unique 6-character linking code (`SM-XXXX`).
+- **Caregiver Live Dashboard**: Dedicated single-screen monitoring console displaying patient division, XP, coin balance, active streaks, highest game levels reached, telemetry history, and remote care reminder management.
+
+### 3. üß† Clinically Grounded Cognitive Games
+- **Match The Card (Visual Memory)**: Pair-matching exercises assessing visual recall, pattern recognition, and focus.
+- **Pattern Recall (Working Memory)**: Sequence memorization challenges training spatial awareness and executive function.
+
+### 4. ü§ñ AI Dynamic Difficulty Calibration
+- Collects real-time telemetry (completion speed, error rates, hint utilization).
+- Evaluates cognitive fatigue and performance trends via an AI microservice to dynamically adjust game difficulty (grid size, preview duration, distraction elements).
+
+### 5. üì¥ Offline-First Sync Engine
+- Local SQLite caching via **Room Database** allows seamless offline play.
+- Background sync queue powered by **Android WorkManager** automatically uploads progress and pulls updates when connectivity is restored.
+
+### 6. üèÜ Positive Gamification & Habit Building
+- Monthly League tiers (Bronze, Silver, Gold, Platinum, Diamond) reset dynamically.
+- Daily streaks, XP incentives, milestone badges, and cosmetic avatars.
 
 ---
 
-## ?? Documentation Links
+## üöÄ Environment & Setup Guide
 
-- [Product Requirements Document (PRD)](./docs/PRD.md)
-- [System Design & Architecture](./docs/SYSTEM_DESIGN.md)
-- [REST API Endpoints Reference](./docs/API_ENDPOINTS.md)
-- [Cloud Deployment Guide](./docs/DEPLOYMENT_GUIDE.md)
+### 1. Spring Boot Backend (`backend/`)
+
+Create an environment file at `backend/.env` (or configure environment variables in your deployment platform such as Render/Railway):
+
+```properties
+# Database Configuration (PostgreSQL / Supabase)
+DB_URL=jdbc:postgresql://<SUPABASE_HOST>:5432/<DB_NAME>?sslmode=require
+DB_USERNAME=postgres.<PROJECT_REF>
+DB_PASSWORD=<YOUR_DATABASE_PASSWORD>
+
+# JWT Security
+JWT_SECRET=c31677353f478474288b839ef42616f728be7a0aa4c66e2c3a5043bf725b8214
+JWT_EXPIRATION_MS=86400000
+
+# AI Microservice Integration URL
+AI_SERVICE_URL=https://smritisetuai.onrender.com
+PORT=8080
+```
+
+**Run Locally:**
+```bash
+cd backend
+./mvnw clean spring-boot:run
+```
 
 ---
 
-## ?? License
-This project is licensed under the MIT License - see the LICENSE file for details.
+### 2. AI Model Service (`model/`)
+
+Create an environment file at `model/.env`:
+
+```properties
+PORT=8000
+PYTHON_VERSION=3.11.8
+```
+
+**Run Locally:**
+```bash
+cd model
+pip install -r requirements.txt
+uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+```
+
+---
+
+### 3. Android Application (`SmritiSetu/`)
+
+1. Open `SmritiSetu/` in **Android Studio** (Ladybug / Koala or newer).
+2. Ensure JDK 17+ is selected under **Project Structure > SDK Location > Gradle JDK**.
+3. Verify or update the backend base URL in `app/src/main/java/com/example/smritisetu/data/api/RetrofitClient.kt`:
+   - Local Emulator: `http://10.0.2.2:8080/`
+   - Production / Cloud: `https://your-backend.onrender.com/`
+4. Build and run on an emulator or physical Android device.
+
+---
+
+## üìö Documentation Index
+
+| Document | Description |
+| :--- | :--- |
+| [**`docs/PRD.md`**](docs/PRD.md) | Full Product Requirements, target demographics, functional specifications, and user journeys. |
+| [**`docs/SYSTEM_DESIGN.md`**](docs/SYSTEM_DESIGN.md) | Architecture diagrams, database schemas, AI telemetry pipeline, security, and offline sync. |
+| [**`docs/API_ENDPOINTS.md`**](docs/API_ENDPOINTS.md) | Comprehensive REST API documentation, request/response models, and headers. |
+| [**`docs/DEPLOYMENT_GUIDE.md`**](docs/DEPLOYMENT_GUIDE.md) | Step-by-step instructions for deploying to Supabase PostgreSQL, Render Web Services, and Android APK generation. |
+
+---
+
+## üõ°Ô∏è License
+
+This project is licensed under the [MIT License](LICENSE).
