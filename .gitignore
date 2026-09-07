@@ -62,3 +62,6 @@ yarn-error.*
 !.env.example
 .env*.local
 
+# Local CodeGraph
+.codegraph/
+
