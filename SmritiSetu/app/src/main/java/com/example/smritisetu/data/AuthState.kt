@@ -42,7 +42,8 @@ enum class LeagueTier(
     val minLevels: Int,
     val colorHex: Long,
     val iconEmoji: String,
-    val description: String
+    val description: String,
+    val imageResId: Int = com.example.smritisetu.R.drawable.bronze_league
 ) {
     BRONZE(
         tierName = "Bronze Division",
@@ -52,7 +53,8 @@ enum class LeagueTier(
         minLevels = 0,
         colorHex = 0xFFCD7F32,
         iconEmoji = "🥉",
-        description = "Early Steps • Levels 1 - 14"
+        description = "Early Steps • Levels 1 - 14",
+        imageResId = com.example.smritisetu.R.drawable.bronze_league
     ),
     SILVER(
         tierName = "Silver Division",
@@ -62,7 +64,8 @@ enum class LeagueTier(
         minLevels = 15,
         colorHex = 0xFFC0C0C0,
         iconEmoji = "🥈",
-        description = "Growing Focus • Levels 15 - 29"
+        description = "Growing Focus • Levels 15 - 29",
+        imageResId = com.example.smritisetu.R.drawable.silver_league
     ),
     GOLD(
         tierName = "Gold Division",
@@ -72,7 +75,8 @@ enum class LeagueTier(
         minLevels = 30,
         colorHex = 0xFFFFD700,
         iconEmoji = "🥇",
-        description = "Sharp Recall • Levels 30 - 44"
+        description = "Sharp Recall • Levels 30 - 44",
+        imageResId = com.example.smritisetu.R.drawable.gold_league
     ),
     PLATINUM(
         tierName = "Platinum Division",
@@ -82,7 +86,8 @@ enum class LeagueTier(
         minLevels = 45,
         colorHex = 0xFF00CED1,
         iconEmoji = "💎",
-        description = "Master Memory • Levels 45 - 59"
+        description = "Master Memory • Levels 45 - 59",
+        imageResId = com.example.smritisetu.R.drawable.platinum_league
     ),
     DIAMOND(
         tierName = "Diamond Division",
@@ -92,7 +97,8 @@ enum class LeagueTier(
         minLevels = 60,
         colorHex = 0xFF9932CC,
         iconEmoji = "👑",
-        description = "Grand Master • Levels 60+"
+        description = "Grand Master • Levels 60+",
+        imageResId = com.example.smritisetu.R.drawable.diamond_league
     );
 
     fun getNextTier(): LeagueTier? {

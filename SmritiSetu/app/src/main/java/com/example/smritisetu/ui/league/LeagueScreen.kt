@@ -20,6 +20,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 import com.example.smritisetu.data.AuthManager
 import com.example.smritisetu.data.LeagueTier
 import com.example.smritisetu.data.LocalAppStrings
@@ -139,7 +142,7 @@ fun LeagueScreen(
                     // Emblem & Tier Badge
                     Box(
                         modifier = Modifier
-                            .size(80.dp)
+                            .size(100.dp)
                             .clip(CircleShape)
                             .background(
                                 Brush.radialGradient(
@@ -151,13 +154,17 @@ fun LeagueScreen(
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = currentTier.iconEmoji,
-                            fontSize = 44.sp
+                        Image(
+                            painter = painterResource(id = currentTier.imageResId),
+                            contentDescription = currentTier.tierName,
+                            modifier = Modifier
+                                .size(88.dp)
+                                .clip(RoundedCornerShape(16.dp)),
+                            contentScale = ContentScale.Fit
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
                         text = currentTier.tierName,
@@ -386,11 +393,11 @@ private fun LeagueTierCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Tier Emoji Emblem
+            // Tier Image Emblem
             Box(
                 modifier = Modifier
-                    .size(52.dp)
-                    .clip(CircleShape)
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(12.dp))
                     .background(
                         if (isCurrent) tierColor.copy(alpha = 0.25f)
                         else if (isUnlocked) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
@@ -398,9 +405,13 @@ private fun LeagueTierCard(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = tier.iconEmoji,
-                    fontSize = 28.sp
+                Image(
+                    painter = painterResource(id = tier.imageResId),
+                    contentDescription = tier.tierName,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(10.dp)),
+                    contentScale = ContentScale.Fit
                 )
             }
 
