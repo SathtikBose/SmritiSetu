@@ -8,8 +8,18 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class DemoDataConfig {
-    @Bean CommandLineRunner seedDemoGames(GameRepository games) {
-        return args -> { seed(games, "Memory Match", "memory_match"); seed(games, "Sequence Recall", "sequence_recall"); seed(games, "Daily Reasoning", "daily_reasoning"); };
+    @Bean
+    CommandLineRunner seedDemoGames(GameRepository games) {
+        return args -> {
+            seed(games, "MatchTheCard", "COGNITIVE");
+            seed(games, "PatternRecall", "COGNITIVE");
+        };
     }
-    private void seed(GameRepository games, String name, String type) { if (games.findByName(name).isEmpty()) games.save(Game.builder().name(name).type(type).build()); }
+
+    private void seed(GameRepository games, String name, String type) {
+        if (games.findByName(name).isEmpty()) {
+            games.save(Game.builder().name(name).type(type).build());
+        }
+    }
 }
+

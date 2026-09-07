@@ -60,8 +60,21 @@ public class ReminderController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping({"/caregiver/reminders", "/caregiver/patient/reminders"})
+    public ResponseEntity<List<ReminderResponse>> getCaregiverReminders(@AuthenticationPrincipal User caregiver) {
+        return ResponseEntity.ok(reminderService.getPatientReminders(caregiver.getId(), null));
+    }
+
+    @PostMapping({"/caregiver/reminders", "/caregiver/patient/reminders"})
+    public ResponseEntity<ReminderResponse> createCaregiverReminder(
+            @AuthenticationPrincipal User caregiver,
+            @Valid @RequestBody ReminderRequest request) {
+        return ResponseEntity.ok(reminderService.createReminder(caregiver.getId(), null, request));
+    }
+
     @GetMapping({"/user/reminders", "/patient/reminders"})
     public ResponseEntity<List<ReminderResponse>> getOwnReminders(@AuthenticationPrincipal User user) {
         return ResponseEntity.ok(reminderService.getOwnReminders(user.getId()));
     }
 }
+

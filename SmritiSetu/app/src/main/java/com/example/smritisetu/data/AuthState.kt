@@ -232,9 +232,14 @@ object AuthManager {
     private val _reminders = MutableStateFlow<List<CaregiverReminder>>(emptyList())
     val reminders: StateFlow<List<CaregiverReminder>> = _reminders.asStateFlow()
 
+    // Linked Patient Live Summary for Caregivers
+    private val _linkedPatientSummary = MutableStateFlow<CaregiverPatientSummaryDto?>(null)
+    val linkedPatientSummary: StateFlow<CaregiverPatientSummaryDto?> = _linkedPatientSummary.asStateFlow()
+
     // Cognitive Telemetry Logs
     private val _telemetryLogs = MutableStateFlow<List<CognitiveGameLog>>(emptyList())
     val telemetryLogs: StateFlow<List<CognitiveGameLog>> = _telemetryLogs.asStateFlow()
+
 
     fun getCurrentYearMonthKey(): String {
         val cal = Calendar.getInstance()
@@ -459,8 +464,13 @@ object AuthManager {
                 val summaryRes = ApiClient.caregiverApi.getPatientSummary()
                 if (summaryRes.isSuccessful && summaryRes.body() != null) {
                     val summary = summaryRes.body()!!
-                    summary.patientId?.let { pid ->
-                        val pRemindersRes = ApiClient.caregiverApi.getPatientReminders(pid)
+                    withContext(Dispatchers.Main) {
+                        _linkedPatientSummary.value = summary
+                        summary.linkCode?.let { lcode -> _currentUser.update { it?.copy(linkedPatientCode = lcode) } }
+                    }
+                    val targetPatientId = summary.patientId ?: _currentUser.value?.id
+                    if (targetPatientId != null) {
+                        val pRemindersRes = ApiClient.caregiverApi.getPatientReminders(targetPatientId)
                         if (pRemindersRes.isSuccessful && pRemindersRes.body() != null) {
                             val list = pRemindersRes.body()!!.map { r ->
                                 CaregiverReminder(
@@ -482,6 +492,7 @@ object AuthManager {
             Log.w("AuthManager", "Could not refresh profile from backend: ${e.message}")
         }
     }
+
 
     private fun loadFromStorage() {
         val prefs = sharedPreferences ?: return
@@ -640,10 +651,13 @@ object AuthManager {
         }
         persistToStorage()
 
-        // Sync with live backend
+        // Sync with live backend and refresh patient summary
         appScope.launch {
             try {
-                ApiClient.caregiverApi.linkPatientByCode(LinkByCodeRequestDto(linkCode = cleaned))
+                val res = ApiClient.caregiverApi.linkPatientByCode(LinkByCodeRequestDto(linkCode = cleaned))
+                if (res.isSuccessful) {
+                    refreshProfileFromBackend()
+                }
             } catch (e: Exception) {
                 Log.w("AuthManager", "Failed to link patient on backend: ${e.message}")
             }
@@ -661,15 +675,16 @@ object AuthManager {
         )
         _reminders.update { it + newReminder }
 
-        // Sync with backend if linked patient exists
-        val patientId = _currentUser.value?.id
-        if (patientId != null) {
+        // Sync with backend for the linked patient
+        val targetPatientId = _linkedPatientSummary.value?.patientId ?: _currentUser.value?.id
+        if (targetPatientId != null) {
             appScope.launch {
                 try {
                     ApiClient.caregiverApi.createReminder(
-                        patientId = patientId,
+                        patientId = targetPatientId,
                         request = ReminderRequestDto(type = type, scheduledTime = time, message = message, active = true)
                     )
+                    refreshProfileFromBackend()
                 } catch (e: Exception) {
                     Log.w("AuthManager", "Failed to sync reminder creation: ${e.message}")
                 }
@@ -681,11 +696,12 @@ object AuthManager {
         _reminders.update { list ->
             list.map { if (it.id == id) it.copy(isActive = !it.isActive) else it }
         }
-        val patientId = _currentUser.value?.id
-        if (patientId != null) {
+        val targetPatientId = _linkedPatientSummary.value?.patientId ?: _currentUser.value?.id
+        if (targetPatientId != null) {
             appScope.launch {
                 try {
-                    ApiClient.caregiverApi.toggleReminder(patientId = patientId, reminderId = id)
+                    ApiClient.caregiverApi.toggleReminder(patientId = targetPatientId, reminderId = id)
+                    refreshProfileFromBackend()
                 } catch (e: Exception) {
                     Log.w("AuthManager", "Failed to sync reminder toggle: ${e.message}")
                 }
@@ -697,17 +713,19 @@ object AuthManager {
         _reminders.update { list ->
             list.filter { it.id != id }
         }
-        val patientId = _currentUser.value?.id
-        if (patientId != null) {
+        val targetPatientId = _linkedPatientSummary.value?.patientId ?: _currentUser.value?.id
+        if (targetPatientId != null) {
             appScope.launch {
                 try {
-                    ApiClient.caregiverApi.deleteReminder(patientId = patientId, reminderId = id)
+                    ApiClient.caregiverApi.deleteReminder(patientId = targetPatientId, reminderId = id)
+                    refreshProfileFromBackend()
                 } catch (e: Exception) {
                     Log.w("AuthManager", "Failed to sync reminder deletion: ${e.message}")
                 }
             }
         }
     }
+
 
     fun buyPerk(perkType: PerkType): Result<Boolean> {
         val currentCoins = _currentUser.value?.coins ?: 0
@@ -903,7 +921,8 @@ object AuthManager {
 
     fun loginWithGoogleAccount(
         account: com.google.android.gms.auth.api.signin.GoogleSignInAccount,
-        role: UserRole = UserRole.PATIENT
+        role: UserRole = UserRole.PATIENT,
+        patientCodeToLink: String? = null
     ): Result<UserProfile> {
         val googleName = account.displayName ?: account.givenName ?: if (role == UserRole.CAREGIVER) "Caregiver" else "Patient"
         val googleEmail = account.email ?: "google.user@example.com"
@@ -921,7 +940,7 @@ object AuthManager {
             avatarUri = photoUri,
             role = role,
             patientLinkCode = generatedPatientCode,
-            linkedPatientCode = null,
+            linkedPatientCode = if (role == UserRole.CAREGIVER) patientCodeToLink?.trim()?.uppercase() else null,
             preferredLanguage = _selectedLanguage.value.displayName,
             isGoogleLinked = true,
             totalXp = 0,
@@ -936,47 +955,39 @@ object AuthManager {
         _activeRoleView.value = role
         persistToStorage()
 
-        if (!idToken.isNullOrBlank()) {
-            appScope.launch {
-                try {
-                    val response = ApiClient.authApi.googleLogin(
-                        GoogleAuthRequest(idToken = idToken, role = role.name)
+        // Sync with backend passing email, name, role, patientCode, and idToken
+        appScope.launch {
+            try {
+                val response = ApiClient.authApi.googleLogin(
+                    GoogleAuthRequest(
+                        idToken = idToken,
+                        email = googleEmail,
+                        name = googleName,
+                        role = role.name,
+                        patientCode = if (role == UserRole.CAREGIVER) patientCodeToLink?.trim()?.uppercase() else null
                     )
-                    if (response.isSuccessful && response.body() != null) {
-                        val dto = response.body()!!
-                        dto.token?.let { token ->
-                            ApiClient.authToken = token
-                            persistToStorage()
-                        }
-                        refreshProfileFromBackend()
+                )
+                if (response.isSuccessful && response.body() != null) {
+                    val dto = response.body()!!
+                    dto.token?.let { token ->
+                        ApiClient.authToken = token
+                        persistToStorage()
                     }
-                } catch (e: Exception) {
-                    Log.w("AuthManager", "Backend Google OAuth token sync: ${e.message}")
+                    refreshProfileFromBackend()
                 }
+            } catch (e: Exception) {
+                Log.w("AuthManager", "Backend Google OAuth sync: ${e.message}")
             }
         }
         return Result.success(user)
     }
 
     fun loginWithGoogle(): Result<UserProfile> {
-        val user = UserProfile(
-            name = "User",
-            email = "user@example.com",
-            isGoogleLinked = true,
-            role = UserRole.PATIENT,
-            preferredLanguage = _selectedLanguage.value.displayName,
-            monthlyLeagueXp = 0,
-            totalXp = 0,
-            coins = 0,
-            streakDays = 0,
-            leagueTier = LeagueTier.BRONZE.tierName,
-            lastActiveDate = null
+        return loginWithGoogleAccount(
+            com.google.android.gms.auth.api.signin.GoogleSignInAccount.createDefault(),
+            UserRole.PATIENT,
+            null
         )
-        _currentUser.value = user
-        _isLoggedIn.value = true
-        _activeRoleView.value = UserRole.PATIENT
-        persistToStorage()
-        return Result.success(user)
     }
 
     fun linkGoogleAccount(): Boolean {
@@ -1135,8 +1146,10 @@ object AuthManager {
         _lastSeasonResetMonth.value = getCurrentYearMonthKey()
         _activeRoleView.value = UserRole.PATIENT
         _reminders.value = emptyList()
+        _linkedPatientSummary.value = null
         _telemetryLogs.value = emptyList()
         val prefs = sharedPreferences ?: return
         prefs.edit().clear().apply()
     }
 }
+

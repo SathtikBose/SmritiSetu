@@ -167,8 +167,14 @@ public class AuthController {
 
             if (optionalUser.isPresent()) {
                 user = optionalUser.get();
+                if (request.getRole() != null) {
+                    user.setRole(request.getRole());
+                }
                 if (name != null && !name.isBlank() && (user.getName() == null || user.getName().isBlank())) {
                     user.setName(name);
+                }
+                if (user.getRole() == Role.PATIENT && (user.getPatientLinkCode() == null || user.getPatientLinkCode().isBlank())) {
+                    user.setPatientLinkCode("SM-" + ((int) (Math.random() * 9000) + 1000));
                 }
                 if (request.getPatientCode() != null && !request.getPatientCode().isBlank()) {
                     user.setLinkedPatientCode(request.getPatientCode().trim().toUpperCase());
@@ -190,6 +196,7 @@ public class AuthController {
                         .monthlyLeagueXp(0)
                         .highestUnlockedLevel(1)
                         .highestUnlockedPatternLevel(1)
+                        .patientLinkCode(selectedRole == Role.PATIENT ? "SM-" + ((int) (Math.random() * 9000) + 1000) : null)
                         .linkedPatientCode(selectedRole == Role.CAREGIVER && request.getPatientCode() != null ? request.getPatientCode().trim().toUpperCase() : null)
                         .build();
 
@@ -213,6 +220,7 @@ public class AuthController {
                     .body(java.util.Map.of("error", "Authentication error: " + e.getMessage()));
         }
     }
+
 
 
     @PostMapping("/change-password")

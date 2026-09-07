@@ -36,6 +36,7 @@ fun CaregiverDashboardScreen(
 ) {
     val themeMode by AuthManager.themeMode.collectAsState()
     val currentUser by AuthManager.currentUser.collectAsState()
+    val linkedPatientSummary by AuthManager.linkedPatientSummary.collectAsState()
     val selectedLanguage by AuthManager.selectedLanguage.collectAsState()
     val highestUnlockedLevel by AuthManager.highestUnlockedLevel.collectAsState()
     val highestUnlockedPatternLevel by AuthManager.highestUnlockedPatternLevel.collectAsState()
@@ -43,6 +44,10 @@ fun CaregiverDashboardScreen(
     val reminders by AuthManager.reminders.collectAsState()
     val darkTheme = isAppInDarkTheme(themeMode)
     val strings = LocalAppStrings.current
+
+    LaunchedEffect(Unit) {
+        AuthManager.refreshProfileFromBackend()
+    }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -125,13 +130,13 @@ fun CaregiverDashboardScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        listOf("Medicine", "Hydration", "Activity").forEach { type ->
+                        listOf("Medicine", "Hydration", "Activity", "Meal").forEach { type ->
                             FilterChip(
                                 selected = reminderType == type,
                                 onClick = { reminderType = type },
-                                label = { Text(type) },
+                                label = { Text(type, fontSize = 11.sp) },
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -320,7 +325,10 @@ fun CaregiverDashboardScreen(
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 // 1. Linked Patient Hero Card
-                val linkedCode = currentUser?.linkedPatientCode?.takeIf { it.isNotBlank() }
+                val linkedCode = linkedPatientSummary?.linkCode ?: currentUser?.linkedPatientCode?.takeIf { it.isNotBlank() }
+                val patientDisplayName = linkedPatientSummary?.name?.takeIf { it.isNotBlank() } ?: (if (linkedCode != null) "Patient ($linkedCode)" else "No Patient Connected")
+                val isConnected = linkedCode != null || linkedPatientSummary?.hasLinkedPatient == true
+
                 GlassCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(26.dp),
@@ -354,14 +362,14 @@ fun CaregiverDashboardScreen(
 
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = if (linkedCode != null) "Patient ($linkedCode)" else "No Patient Connected",
+                                    text = patientDisplayName,
                                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = if (linkedCode != null) "Connected & Monitoring Active" else "Enter patient code to link",
+                                    text = if (isConnected) "Connected & Monitoring Active" else "Enter patient code to link",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = if (linkedCode != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                    color = if (isConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                                 )
                             }
 
@@ -397,7 +405,7 @@ fun CaregiverDashboardScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = if (linkedCode != null) "Caregiver Link: Active" else "Pending Patient Connection",
+                                text = if (isConnected) "Caregiver Link: Active" else "Pending Patient Connection",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -408,20 +416,28 @@ fun CaregiverDashboardScreen(
                             ) {
                                 Icon(Icons.Default.Link, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text(if (linkedCode != null) "Change Patient Code" else "Link Patient Code", fontSize = 12.sp)
+                                Text(if (isConnected) "Change Patient Code" else "Link Patient Code", fontSize = 12.sp)
                             }
                         }
                     }
                 }
 
                 // 2. Real-Time Performance Metric Tiles (2x2 Grid)
+                val displayTier = linkedPatientSummary?.leagueTier ?: currentUser?.leagueTier ?: "Bronze Division"
+                val displayTotalXp = linkedPatientSummary?.totalXp ?: currentUser?.totalXp ?: 0
+                val displayMonthlyXp = linkedPatientSummary?.monthlyLeagueXp ?: currentUser?.monthlyLeagueXp ?: 0
+                val displayCoins = linkedPatientSummary?.coins ?: currentUser?.coins ?: 0
+                val displayStreak = linkedPatientSummary?.streakDays ?: currentUser?.streakDays ?: 0
+                val displayMatchLevel = linkedPatientSummary?.highestUnlockedLevel ?: highestUnlockedLevel
+                val displayPatternLevel = linkedPatientSummary?.highestUnlockedPatternLevel ?: highestUnlockedPatternLevel
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     MetricCard(
                         title = "Division / League",
-                        value = currentUser?.leagueTier ?: "Bronze",
+                        value = displayTier,
                         subtitle = "Monthly Standing",
                         icon = Icons.Default.EmojiEvents,
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -431,8 +447,8 @@ fun CaregiverDashboardScreen(
                     )
                     MetricCard(
                         title = "Total XP",
-                        value = "${currentUser?.totalXp ?: 0} XP",
-                        subtitle = "${currentUser?.monthlyLeagueXp ?: 0} this month",
+                        value = "$displayTotalXp XP",
+                        subtitle = "$displayMonthlyXp this month",
                         icon = Icons.Default.Star,
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         iconTint = MaterialTheme.colorScheme.secondary,
@@ -447,7 +463,7 @@ fun CaregiverDashboardScreen(
                 ) {
                     MetricCard(
                         title = "Coins Balance",
-                        value = "${currentUser?.coins ?: 0}",
+                        value = "$displayCoins",
                         subtitle = "Earned in games",
                         icon = Icons.Default.MonetizationOn,
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
@@ -457,7 +473,7 @@ fun CaregiverDashboardScreen(
                     )
                     MetricCard(
                         title = "Daily Streak",
-                        value = "${currentUser?.streakDays ?: 0} Days",
+                        value = "$displayStreak Days",
                         subtitle = "Continuous Activity",
                         icon = Icons.Default.LocalFireDepartment,
                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -501,7 +517,7 @@ fun CaregiverDashboardScreen(
                                     Spacer(modifier = Modifier.width(10.dp))
                                     Column {
                                         Text("Match Card", style = MaterialTheme.typography.labelSmall)
-                                        Text("Level $highestUnlockedLevel", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                                        Text("Level $displayMatchLevel", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                                     }
                                 }
                             }
@@ -519,13 +535,14 @@ fun CaregiverDashboardScreen(
                                     Spacer(modifier = Modifier.width(10.dp))
                                     Column {
                                         Text("Pattern Recall", style = MaterialTheme.typography.labelSmall)
-                                        Text("Level $highestUnlockedPatternLevel", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                                        Text("Level $displayPatternLevel", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
                                     }
                                 }
                             }
                         }
                     }
                 }
+
 
                 // 3. Daily Care Reminders Manager
                 GlassCard(

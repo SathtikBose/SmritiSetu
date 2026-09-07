@@ -67,7 +67,8 @@ fun SignupScreen(
         try {
             val account = task.getResult(ApiException::class.java)
             if (account != null) {
-                val authRes = AuthManager.loginWithGoogleAccount(account, selectedRole)
+                val linkCode = if (selectedRole == UserRole.CAREGIVER) patientCodeToLink.trim().ifBlank { null } else null
+                val authRes = AuthManager.loginWithGoogleAccount(account, selectedRole, linkCode)
                 if (authRes.isSuccess) {
                     onSignupSuccess()
                 } else {
@@ -77,12 +78,14 @@ fun SignupScreen(
         } catch (e: ApiException) {
             val currentAccount = GoogleSignIn.getLastSignedInAccount(context)
             if (currentAccount != null) {
-                AuthManager.loginWithGoogleAccount(currentAccount, selectedRole)
+                val linkCode = if (selectedRole == UserRole.CAREGIVER) patientCodeToLink.trim().ifBlank { null } else null
+                AuthManager.loginWithGoogleAccount(currentAccount, selectedRole, linkCode)
                 onSignupSuccess()
             } else {
                 errorMessage = "Google Sign-In: ${e.localizedMessage ?: "Status ${e.statusCode}"}"
             }
         }
+
     }
 
     val scrollState = rememberScrollState()

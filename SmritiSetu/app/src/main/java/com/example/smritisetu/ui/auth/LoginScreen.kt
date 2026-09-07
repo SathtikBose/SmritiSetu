@@ -46,6 +46,8 @@ fun LoginScreen(
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var selectedRole by remember { mutableStateOf(UserRole.PATIENT) }
+    var patientCodeToLink by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -66,7 +68,8 @@ fun LoginScreen(
         try {
             val account = task.getResult(ApiException::class.java)
             if (account != null) {
-                val authRes = AuthManager.loginWithGoogleAccount(account, UserRole.PATIENT)
+                val linkCode = if (selectedRole == UserRole.CAREGIVER) patientCodeToLink.trim().ifBlank { null } else null
+                val authRes = AuthManager.loginWithGoogleAccount(account, selectedRole, linkCode)
                 if (authRes.isSuccess) {
                     onLoginSuccess()
                 } else {
@@ -76,7 +79,8 @@ fun LoginScreen(
         } catch (e: ApiException) {
             val currentAccount = GoogleSignIn.getLastSignedInAccount(context)
             if (currentAccount != null) {
-                AuthManager.loginWithGoogleAccount(currentAccount, UserRole.PATIENT)
+                val linkCode = if (selectedRole == UserRole.CAREGIVER) patientCodeToLink.trim().ifBlank { null } else null
+                AuthManager.loginWithGoogleAccount(currentAccount, selectedRole, linkCode)
                 onLoginSuccess()
             } else {
                 errorMessage = "Google Sign-In: ${e.localizedMessage ?: "Status ${e.statusCode}"}"
@@ -117,7 +121,7 @@ fun LoginScreen(
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(28.dp))
 
             // Welcome Back Card
             Card(
@@ -144,7 +148,7 @@ fun LoginScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     if (errorMessage != null) {
                         Surface(
@@ -162,6 +166,48 @@ fun LoginScreen(
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                     }
+
+                    // Role Selection Chips
+                    Text(
+                        text = "Select Account Role",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 6.dp)
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        FilterChip(
+                            selected = selectedRole == UserRole.PATIENT,
+                            onClick = { selectedRole = UserRole.PATIENT },
+                            label = { Text("Patient", fontWeight = FontWeight.SemiBold) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        FilterChip(
+                            selected = selectedRole == UserRole.CAREGIVER,
+                            onClick = { selectedRole = UserRole.CAREGIVER },
+                            label = { Text("Caregiver", fontWeight = FontWeight.SemiBold) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    if (selectedRole == UserRole.CAREGIVER) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = patientCodeToLink,
+                            onValueChange = { patientCodeToLink = it },
+                            label = { Text("Patient Link Code (Optional)") },
+                            placeholder = { Text("e.g. SM-8492") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
 
                     // Email field
                     OutlinedTextField(
@@ -187,7 +233,7 @@ fun LoginScreen(
                         shape = RoundedCornerShape(12.dp)
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
                     // Password field
                     OutlinedTextField(
@@ -278,7 +324,7 @@ fun LoginScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(18.dp))
 
                     // Or divider
                     Row(
@@ -294,7 +340,7 @@ fun LoginScreen(
                         HorizontalDivider(modifier = Modifier.weight(1f))
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
                     // Google Sign-In Button
                     OutlinedButton(
@@ -325,6 +371,7 @@ fun LoginScreen(
                     }
                 }
             }
+
 
             Spacer(modifier = Modifier.height(24.dp))
 

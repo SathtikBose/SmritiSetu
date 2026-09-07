@@ -15,14 +15,19 @@ data class RegisterRequest(
     val password: String,
     val name: String,
     val role: String? = "PATIENT",
-    val preferredLanguage: String? = "en"
+    val preferredLanguage: String? = "en",
+    val patientCode: String? = null
 )
 
 @Serializable
 data class GoogleAuthRequest(
-    val idToken: String,
-    val role: String? = "PATIENT"
+    val idToken: String? = null,
+    val email: String? = null,
+    val name: String? = null,
+    val role: String? = "PATIENT",
+    val patientCode: String? = null
 )
+
 
 @Serializable
 data class AuthResponseDto(
