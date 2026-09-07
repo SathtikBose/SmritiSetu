@@ -22,11 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.smritisetu.data.AuthManager
-import com.example.smritisetu.data.CaregiverReminder
-import com.example.smritisetu.data.CognitiveGameLog
-import com.example.smritisetu.data.LocalAppStrings
-import com.example.smritisetu.data.UserRole
+import com.example.smritisetu.data.*
 import com.example.smritisetu.theme.GlassCard
 import com.example.smritisetu.theme.getGlassGradientBrush
 import com.example.smritisetu.theme.isAppInDarkTheme
@@ -35,12 +31,14 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CaregiverDashboardScreen(
-    onSwitchToPatientMode: () -> Unit,
+    onLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val themeMode by AuthManager.themeMode.collectAsState()
     val currentUser by AuthManager.currentUser.collectAsState()
+    val selectedLanguage by AuthManager.selectedLanguage.collectAsState()
     val highestUnlockedLevel by AuthManager.highestUnlockedLevel.collectAsState()
+    val highestUnlockedPatternLevel by AuthManager.highestUnlockedPatternLevel.collectAsState()
     val telemetryLogs by AuthManager.telemetryLogs.collectAsState()
     val reminders by AuthManager.reminders.collectAsState()
     val darkTheme = isAppInDarkTheme(themeMode)
@@ -51,6 +49,8 @@ fun CaregiverDashboardScreen(
 
     var showAddReminderDialog by remember { mutableStateOf(false) }
     var showLinkPatientDialog by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
+    var showLogoutConfirmDialog by remember { mutableStateOf(false) }
     var newPatientCodeInput by remember { mutableStateOf("") }
     var reminderType by remember { mutableStateOf("Medicine") }
     var reminderTime by remember { mutableStateOf("08:00 AM") }
@@ -92,11 +92,15 @@ fun CaregiverDashboardScreen(
                             showLinkPatientDialog = false
                             newPatientCodeInput = ""
                             scope.launch { snackbarHostState.showSnackbar(strings.patientLinkedSuccess) }
+                        } else {
+                            scope.launch {
+                                snackbarHostState.showSnackbar(result.exceptionOrNull()?.message ?: "Failed to link patient")
+                            }
                         }
                     },
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Link", fontWeight = FontWeight.Bold)
+                    Text("Link Patient", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -119,7 +123,6 @@ fun CaregiverDashboardScreen(
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // Type selector
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -178,6 +181,74 @@ fun CaregiverDashboardScreen(
         )
     }
 
+    // Language Dialog
+    if (showLanguageDialog) {
+        AlertDialog(
+            onDismissRequest = { showLanguageDialog = false },
+            title = { Text(strings.selectLanguage, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    AppLanguage.entries.forEach { lang ->
+                        Surface(
+                            onClick = {
+                                AuthManager.setLanguage(lang)
+                                showLanguageDialog = false
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (selectedLanguage == lang) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(lang.displayName, fontWeight = if (selectedLanguage == lang) FontWeight.Bold else FontWeight.Normal)
+                                Text(lang.nativeName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLanguageDialog = false }) {
+                    Text(strings.cancel)
+                }
+            }
+        )
+    }
+
+    // Logout Confirmation Dialog
+    if (showLogoutConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutConfirmDialog = false },
+            title = { Text(strings.logout, fontWeight = FontWeight.Bold) },
+            text = { Text(strings.confirmLogout) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutConfirmDialog = false
+                        AuthManager.logout()
+                        onLogout()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text(strings.logout, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutConfirmDialog = false }) {
+                    Text(strings.cancel)
+                }
+            }
+        )
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -189,21 +260,46 @@ fun CaregiverDashboardScreen(
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                         )
                         Text(
-                            text = strings.caregiverDashboardSubtitle,
+                            text = "Patient Monitoring & Daily Care",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 actions = {
-                    FilledTonalButton(
-                        onClick = onSwitchToPatientMode,
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.padding(end = 8.dp)
+                    // Language Switcher
+                    IconButton(onClick = { showLanguageDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Language,
+                            contentDescription = strings.language,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    // Theme Switcher
+                    IconButton(
+                        onClick = {
+                            val nextMode = when (themeMode) {
+                                AppThemeMode.LIGHT -> AppThemeMode.DARK
+                                AppThemeMode.DARK -> AppThemeMode.SYSTEM
+                                AppThemeMode.SYSTEM -> AppThemeMode.HIGH_CONTRAST
+                                AppThemeMode.HIGH_CONTRAST -> AppThemeMode.LIGHT
+                            }
+                            AuthManager.setThemeMode(nextMode)
+                        }
                     ) {
-                        Icon(Icons.Default.SportsEsports, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Patient Mode", fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                        Icon(
+                            imageVector = if (darkTheme) Icons.Default.DarkMode else Icons.Default.LightMode,
+                            contentDescription = "Toggle Theme",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    // Logout
+                    IconButton(onClick = { showLogoutConfirmDialog = true }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Logout,
+                            contentDescription = strings.logout,
+                            tint = MaterialTheme.colorScheme.error
+                        )
                     }
                 }
             )
@@ -224,6 +320,7 @@ fun CaregiverDashboardScreen(
                 verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 // 1. Linked Patient Hero Card
+                val linkedCode = currentUser?.linkedPatientCode?.takeIf { it.isNotBlank() }
                 GlassCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(26.dp),
@@ -257,31 +354,15 @@ fun CaregiverDashboardScreen(
 
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = if (currentUser?.role == UserRole.CAREGIVER) {
-                                        currentUser?.name?.takeIf { it.isNotBlank() } ?: "Caregiver"
-                                    } else {
-                                        currentUser?.name?.takeIf { it.isNotBlank() } ?: "Patient"
-                                    },
+                                    text = if (linkedCode != null) "Patient ($linkedCode)" else "No Patient Connected",
                                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
-                                val details = listOfNotNull(
-                                    currentUser?.gender?.takeIf { it.isNotBlank() },
-                                    currentUser?.age?.takeIf { it > 0 }?.let { "$it Years" }
-                                ).joinToString(" • ")
-                                if (details.isNotBlank()) {
-                                    Text(
-                                        text = details,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                } else if (!currentUser?.email.isNullOrBlank()) {
-                                    Text(
-                                        text = currentUser?.email ?: "",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                                Text(
+                                    text = if (linkedCode != null) "Connected & Monitoring Active" else "Enter patient code to link",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (linkedCode != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                                )
                             }
 
                             // Patient Code Badge
@@ -300,9 +381,7 @@ fun CaregiverDashboardScreen(
                                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                                     )
                                     Text(
-                                        text = currentUser?.linkedPatientCode?.takeIf { it.isNotBlank() }
-                                            ?: currentUser?.patientLinkCode?.takeIf { it.isNotBlank() }
-                                            ?: "N/A",
+                                        text = linkedCode ?: "Not Set",
                                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                                         color = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
@@ -318,17 +397,18 @@ fun CaregiverDashboardScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Connected to Patient Profile",
+                                text = if (linkedCode != null) "Caregiver Link: Active" else "Pending Patient Connection",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            TextButton(
+                            FilledTonalButton(
                                 onClick = { showLinkPatientDialog = true },
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                             ) {
                                 Icon(Icons.Default.Link, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Change Patient ID", fontSize = 12.sp)
+                                Text(if (linkedCode != null) "Change Patient Code" else "Link Patient Code", fontSize = 12.sp)
                             }
                         }
                     }
@@ -340,9 +420,9 @@ fun CaregiverDashboardScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     MetricCard(
-                        title = "League Tier",
-                        value = currentUser?.leagueTier ?: "Silver",
-                        subtitle = "NER Community",
+                        title = "Division / League",
+                        value = currentUser?.leagueTier ?: "Bronze",
+                        subtitle = "Monthly Standing",
                         icon = Icons.Default.EmojiEvents,
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         iconTint = MaterialTheme.colorScheme.primary,
@@ -350,9 +430,9 @@ fun CaregiverDashboardScreen(
                         darkTheme = darkTheme
                     )
                     MetricCard(
-                        title = "Experience",
-                        value = "${currentUser?.totalXp ?: 1450} XP",
-                        subtitle = "+15 XP / level",
+                        title = "Total XP",
+                        value = "${currentUser?.totalXp ?: 0} XP",
+                        subtitle = "${currentUser?.monthlyLeagueXp ?: 0} this month",
                         icon = Icons.Default.Star,
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         iconTint = MaterialTheme.colorScheme.secondary,
@@ -367,8 +447,8 @@ fun CaregiverDashboardScreen(
                 ) {
                     MetricCard(
                         title = "Coins Balance",
-                        value = "${currentUser?.coins ?: 1000}",
-                        subtitle = "Available for perks",
+                        value = "${currentUser?.coins ?: 0}",
+                        subtitle = "Earned in games",
                         icon = Icons.Default.MonetizationOn,
                         containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                         iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
@@ -376,18 +456,147 @@ fun CaregiverDashboardScreen(
                         darkTheme = darkTheme
                     )
                     MetricCard(
-                        title = "Levels Reached",
-                        value = "Level $highestUnlockedLevel",
-                        subtitle = "Match The Card",
-                        icon = Icons.Default.SportsEsports,
+                        title = "Daily Streak",
+                        value = "${currentUser?.streakDays ?: 0} Days",
+                        subtitle = "Continuous Activity",
+                        icon = Icons.Default.LocalFireDepartment,
                         containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        iconTint = MaterialTheme.colorScheme.primary,
+                        iconTint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.weight(1f),
                         darkTheme = darkTheme
                     )
                 }
 
-                // 3. Cognitive Telemetry Session History
+                // Max Level Reached Card
+                GlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp),
+                    darkTheme = darkTheme
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Maximum Game Levels Reached",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.Flip, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text("Match Card", style = MaterialTheme.typography.labelSmall)
+                                        Text("Level $highestUnlockedLevel", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                                    }
+                                }
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.GridView, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text("Pattern Recall", style = MaterialTheme.typography.labelSmall)
+                                        Text("Level $highestUnlockedPatternLevel", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 3. Daily Care Reminders Manager
+                GlassCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    darkTheme = darkTheme
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(18.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = strings.dailyReminders,
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "${reminders.count { it.isActive }} active alerts",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            FilledTonalButton(
+                                onClick = { showAddReminderDialog = true },
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Add", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        if (reminders.isEmpty()) {
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(14.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                            ) {
+                                Text(
+                                    text = "No care reminders set yet. Tap '+ Add' to set daily reminders for medicine, hydration, or meals for your patient.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(14.dp),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        } else {
+                            reminders.forEach { reminder ->
+                                ReminderItem(
+                                    reminder = reminder,
+                                    onToggle = { AuthManager.toggleReminder(reminder.id) },
+                                    onDelete = { AuthManager.deleteReminder(reminder.id) },
+                                    darkTheme = darkTheme
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+                        }
+                    }
+                }
+
+                // 4. Cognitive Telemetry Session History
                 GlassCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(24.dp),
@@ -424,11 +633,19 @@ fun CaregiverDashboardScreen(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         if (telemetryLogs.isEmpty()) {
-                            Text(
-                                text = "No game sessions recorded yet.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(14.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                            ) {
+                                Text(
+                                    text = "No game sessions recorded yet for this patient.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(14.dp),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         } else {
                             telemetryLogs.takeLast(5).reversed().forEach { log ->
                                 SessionHistoryItem(log = log, darkTheme = darkTheme)
@@ -438,7 +655,7 @@ fun CaregiverDashboardScreen(
                     }
                 }
 
-                // 4. Daily Care Reminders Manager
+                // 5. Caregiver Account & Preferences Card
                 GlassCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(24.dp),
@@ -447,50 +664,54 @@ fun CaregiverDashboardScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(18.dp)
+                            .padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+                        Text(
+                            text = "Caregiver Account",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = strings.dailyReminders,
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            IconButton(onClick = { showAddReminderDialog = true }) {
-                                Icon(
-                                    imageVector = Icons.Default.AddCircle,
-                                    contentDescription = "Add Reminder",
-                                    tint = MaterialTheme.colorScheme.primary
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Person, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = currentUser?.name?.takeIf { it.isNotBlank() } ?: "Caregiver",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                                )
+                                Text(
+                                    text = currentUser?.email ?: "",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
-                        reminders.forEach { reminder ->
-                            ReminderItem(
-                                reminder = reminder,
-                                onToggle = { AuthManager.toggleReminder(reminder.id) },
-                                onDelete = { AuthManager.deleteReminder(reminder.id) },
-                                darkTheme = darkTheme
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { showLogoutConfirmDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(strings.logout, fontWeight = FontWeight.Bold)
                         }
                     }
-                }
-
-                // Switch back to Patient Game View button
-                Button(
-                    onClick = onSwitchToPatientMode,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Icon(Icons.Default.SportsEsports, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Hand Over to Patient (Play Game)", fontWeight = FontWeight.Bold)
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -623,7 +844,7 @@ fun ReminderItem(
                 imageVector = when (reminder.type) {
                     "Medicine" -> Icons.Default.Medication
                     "Hydration" -> Icons.Default.WaterDrop
-                    else -> Icons.Default.DirectionsWalk
+                    else -> Icons.AutoMirrored.Filled.DirectionsWalk
                 },
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
@@ -647,6 +868,17 @@ fun ReminderItem(
                 onCheckedChange = { onToggle() },
                 modifier = Modifier.scale(0.85f)
             )
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DeleteOutline,
+                    contentDescription = "Delete Reminder",
+                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 }
