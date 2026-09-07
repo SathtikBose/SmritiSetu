@@ -15,5 +15,18 @@ import java.util.UUID;
 public class AuthResponse {
     private String token;
     private UUID userId;
+    private String name;
+    private String username;
     private Role role;
+    private String patientLinkCode;
+    private String linkedPatientCode;
+    private Integer coins;
+    private Integer hintsCount;
+    private Integer skipLevelCount;
+    private Integer showAgainCount;
+    private Integer totalXp;
+    private Integer monthlyLeagueXp;
+    private String leagueTier;
+    private Integer highestUnlockedLevel;
+    private Integer highestUnlockedPatternLevel;
 }

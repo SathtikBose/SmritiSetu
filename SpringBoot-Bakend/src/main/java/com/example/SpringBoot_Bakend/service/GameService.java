@@ -17,6 +17,7 @@ public class GameService {
     private final GameProgressRepository progressRepository;
     private final LevelAttemptRepository attemptRepository;
     private final LeagueStatusRepository leagueRepository;
+    private final UserRepository userRepository;
     private final AIDifficultyService aiDifficultyService;
 
     @Transactional
@@ -33,8 +34,9 @@ public class GameService {
                         .currentDifficulty(1)
                         .build()));
 
-        // Calculate XP (Elderly patients are never penalized, they just gain less XP if they use hints)
-        int xpEarned = Math.max(10 - request.getHintsUsed() * 2, 2);
+        // Calculate XP (Elderly patients are rewarded with +15 XP and +200 coins per level)
+        int xpEarned = Math.max(15 - request.getHintsUsed() * 2, 5);
+        int coinsEarned = 200;
         
         // Save the telemetry attempt
         LevelAttempt attempt = LevelAttempt.builder()
@@ -48,24 +50,53 @@ public class GameService {
                 .build();
         attemptRepository.save(attempt);
         
-        // Update League / Gamification
-        LeagueStatus league = leagueRepository.findByUserId(user.getId())
-                .orElseGet(() -> leagueRepository.save(LeagueStatus.builder().user(user).build()));
+        // Update user state directly
+        int currentCoins = user.getCoins() != null ? user.getCoins() : 1000;
+        int currentTotalXp = user.getTotalXp() != null ? user.getTotalXp() : 1450;
+        int currentMonthlyXp = user.getMonthlyLeagueXp() != null ? user.getMonthlyLeagueXp() : 0;
         
-        league.setTotalXp(league.getTotalXp() + xpEarned);
+        user.setCoins(currentCoins + coinsEarned);
+        user.setTotalXp(currentTotalXp + xpEarned);
+        user.setMonthlyLeagueXp(currentMonthlyXp + xpEarned);
         
-        // Simple League Promotions
-        if (league.getTotalXp() > 500 && league.getCurrentLeague().equals("BRONZE")) {
-            league.setCurrentLeague("SILVER");
-        } else if (league.getTotalXp() > 1500 && league.getCurrentLeague().equals("SILVER")) {
-            league.setCurrentLeague("GOLD");
+        // Compute League Tier
+        int newMonthlyXp = user.getMonthlyLeagueXp();
+        String tierName = "Bronze Division";
+        if (newMonthlyXp >= 900) {
+            tierName = "Diamond Division";
+        } else if (newMonthlyXp >= 675) {
+            tierName = "Platinum Division";
+        } else if (newMonthlyXp >= 450) {
+            tierName = "Gold Division";
+        } else if (newMonthlyXp >= 225) {
+            tierName = "Silver Division";
         }
-        leagueRepository.save(league);
-        
+        user.setLeagueTier(tierName);
+
         // Progress level counter
         int completedLevel = progress.getCurrentLevel();
-        progress.setCurrentLevel(completedLevel + 1);
+        int nextLevel = completedLevel + 1;
+        progress.setCurrentLevel(nextLevel);
         progress.setLastPlayed(LocalDateTime.now());
+        
+        // Update User highest level tracker
+        if (game.getGameType() != null && "pattern".equalsIgnoreCase(game.getGameType().name())) {
+            if (user.getHighestUnlockedPatternLevel() == null || nextLevel > user.getHighestUnlockedPatternLevel()) {
+                user.setHighestUnlockedPatternLevel(nextLevel);
+            }
+        } else {
+            if (user.getHighestUnlockedLevel() == null || nextLevel > user.getHighestUnlockedLevel()) {
+                user.setHighestUnlockedLevel(nextLevel);
+            }
+        }
+        userRepository.save(user);
+
+        // Update LeagueStatus entity for backward compatibility
+        LeagueStatus league = leagueRepository.findByUserId(user.getId())
+                .orElseGet(() -> leagueRepository.save(LeagueStatus.builder().user(user).build()));
+        league.setTotalXp(user.getTotalXp());
+        league.setCurrentLeague(tierName);
+        leagueRepository.save(league);
         
         // Every 5th level, run the Rule-Based AI Difficulty Engine
         String aiReasoning = null;
@@ -80,7 +111,7 @@ public class GameService {
                 .xpEarned(xpEarned)
                 .newDifficulty(progress.getCurrentDifficulty())
                 .nextLevel(progress.getCurrentLevel())
-                .newLeague(league.getCurrentLeague())
+                .newLeague(tierName)
                 .aiReasoningMessage(aiReasoning)
                 .build();
     }

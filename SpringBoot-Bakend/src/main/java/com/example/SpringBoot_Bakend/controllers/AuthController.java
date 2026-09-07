@@ -63,11 +63,7 @@ public class AuthController {
         // Generate token
         String jwtToken = jwtUtil.generateToken(user);
 
-        return ResponseEntity.ok(AuthResponse.builder()
-                .token(jwtToken)
-                .userId(user.getId())
-                .role(user.getRole())
-                .build());
+        return ResponseEntity.ok(toAuthResponse(user, jwtToken));
     }
 
     @PostMapping("/login")
@@ -84,11 +80,7 @@ public class AuthController {
 
         String jwtToken = jwtUtil.generateToken(user);
 
-        return ResponseEntity.ok(AuthResponse.builder()
-                .token(jwtToken)
-                .userId(user.getId())
-                .role(user.getRole())
-                .build());
+        return ResponseEntity.ok(toAuthResponse(user, jwtToken));
     }
 
     @PostMapping("/google")
@@ -135,16 +127,33 @@ public class AuthController {
                 // Generate our custom JWT token
                 String jwtToken = jwtUtil.generateToken(user);
 
-                return ResponseEntity.ok(AuthResponse.builder()
-                        .token(jwtToken)
-                        .userId(user.getId())
-                        .role(user.getRole())
-                        .build());
+                return ResponseEntity.ok(toAuthResponse(user, jwtToken));
             } else {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid ID token.");
             }
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error verifying token: " + e.getMessage());
         }
+    }
+
+    private AuthResponse toAuthResponse(User user, String jwtToken) {
+        return AuthResponse.builder()
+                .token(jwtToken)
+                .userId(user.getId())
+                .name(user.getName())
+                .username(user.getUsername())
+                .role(user.getRole())
+                .patientLinkCode(user.getPatientLinkCode())
+                .linkedPatientCode(user.getLinkedPatientCode())
+                .coins(user.getCoins())
+                .hintsCount(user.getHintsCount())
+                .skipLevelCount(user.getSkipLevelCount())
+                .showAgainCount(user.getShowAgainCount())
+                .totalXp(user.getTotalXp())
+                .monthlyLeagueXp(user.getMonthlyLeagueXp())
+                .leagueTier(user.getLeagueTier())
+                .highestUnlockedLevel(user.getHighestUnlockedLevel())
+                .highestUnlockedPatternLevel(user.getHighestUnlockedPatternLevel())
+                .build();
     }
 }

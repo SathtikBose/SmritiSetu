@@ -19,6 +19,26 @@ public class CaregiverController {
 
     private final CaregiverService caregiverService;
 
+    @PostMapping("/link-by-code")
+    public ResponseEntity<?> linkPatientByCode(@AuthenticationPrincipal User caregiver, @RequestBody java.util.Map<String, String> request) {
+        String linkCode = request.get("linkCode");
+        if (linkCode == null || linkCode.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", "linkCode is required"));
+        }
+        User patient = caregiverService.linkPatientByCode(caregiver.getId(), linkCode);
+        return ResponseEntity.ok(java.util.Map.of(
+                "success", true,
+                "message", "Patient linked successfully",
+                "patient", java.util.Map.of(
+                        "id", patient.getId(),
+                        "name", patient.getName(),
+                        "linkCode", patient.getPatientLinkCode() != null ? patient.getPatientLinkCode() : "",
+                        "leagueTier", patient.getLeagueTier(),
+                        "totalXp", patient.getTotalXp()
+                )
+        ));
+    }
+
     @PostMapping("/patient/{patientId}/link")
     public ResponseEntity<Void> linkPatient(@AuthenticationPrincipal User caregiver, @PathVariable UUID patientId) {
         caregiverService.linkPatient(caregiver.getId(), patientId);

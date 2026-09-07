@@ -6,5 +6,9 @@ import lombok.Data;
 @Data
 public class UpdateProfileRequest {
     @NotBlank private String name;
-    @NotBlank private String preferredLanguage;
+    private String preferredLanguage;
+    private String phone;
+    private String gender;
+    private Integer age;
+    private String avatarUri;
 }

@@ -34,7 +34,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/caregiver/**").hasRole("CAREGIVER")
-                .requestMatchers("/game/**", "/league/**", "/content/**").hasRole("PATIENT")
+                .requestMatchers("/game/**", "/league/**", "/content/**", "/shop/**").hasRole("PATIENT")
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

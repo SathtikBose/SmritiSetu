@@ -38,8 +38,31 @@ public class CaregiverService {
         }
         if (!linkRepository.existsByCaregiverIdAndPatientId(caregiverId, patientId)) {
             User caregiver = userRepository.findById(caregiverId).orElseThrow();
+            caregiver.setLinkedPatientCode(patient.getPatientLinkCode());
+            userRepository.save(caregiver);
             linkRepository.save(CaregiverLink.builder().caregiver(caregiver).patient(patient).build());
         }
+    }
+
+    public User linkPatientByCode(UUID caregiverId, String linkCode) {
+        if (linkCode == null || linkCode.trim().isEmpty()) {
+            throw new IllegalArgumentException("Patient link code is required.");
+        }
+        User patient = userRepository.findByPatientLinkCode(linkCode.trim())
+                .orElseThrow(() -> new IllegalArgumentException("No patient found with code: " + linkCode));
+        if (patient.getId().equals(caregiverId)) {
+            throw new IllegalArgumentException("A caregiver cannot link to their own account.");
+        }
+        User caregiver = userRepository.findById(caregiverId)
+                .orElseThrow(() -> new IllegalArgumentException("Caregiver not found."));
+
+        caregiver.setLinkedPatientCode(patient.getPatientLinkCode());
+        userRepository.save(caregiver);
+
+        if (!linkRepository.existsByCaregiverIdAndPatientId(caregiverId, patient.getId())) {
+            linkRepository.save(CaregiverLink.builder().caregiver(caregiver).patient(patient).build());
+        }
+        return patient;
     }
 
     public void verifyLink(UUID caregiverId, UUID patientId) {
