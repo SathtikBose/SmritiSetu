@@ -4,6 +4,9 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import com.example.smritisetu.network.*
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.MultipartBody
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -1080,8 +1083,9 @@ object AuthManager {
                 val inputStream = context.contentResolver.openInputStream(imageUri)
                 val bytes = inputStream?.use { it.readBytes() }
                 if (bytes != null && bytes.isNotEmpty()) {
-                    val requestBody = okhttp3.RequestBody.create(okhttp3.MediaType.parse("image/*"), bytes)
-                    val part = okhttp3.MultipartBody.Part.createFormData("file", "avatar_${System.currentTimeMillis()}.jpg", requestBody)
+                    val mediaType = "image/*".toMediaTypeOrNull()
+                    val requestBody = bytes.toRequestBody(mediaType)
+                    val part = MultipartBody.Part.createFormData("file", "avatar_${System.currentTimeMillis()}.jpg", requestBody)
                     val response = ApiClient.userApi.uploadAvatar(part)
                     if (response.isSuccessful && response.body() != null) {
                         val updatedAvatar = response.body()!!.avatarUri ?: imageUri.toString()
