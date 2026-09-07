@@ -219,21 +219,30 @@ fun SettingsScreen(
 
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = currentUser?.name ?: "User",
+                                        text = currentUser?.name?.takeIf { it.isNotBlank() } ?: "User",
                                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
-                                    Text(
-                                        text = currentUser?.email ?: "email@example.com",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = "${currentUser?.gender ?: "Female"} • ${currentUser?.age ?: 68} yrs • ${currentUser?.phone ?: ""}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
+                                    if (!currentUser?.email.isNullOrBlank()) {
+                                        Text(
+                                            text = currentUser?.email ?: "",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    val profileSub = listOfNotNull(
+                                        currentUser?.gender?.takeIf { it.isNotBlank() },
+                                        currentUser?.age?.takeIf { it > 0 }?.let { "$it yrs" },
+                                        currentUser?.phone?.takeIf { it.isNotBlank() }
+                                    ).joinToString(" • ")
+                                    if (profileSub.isNotBlank()) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = profileSub,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
                                 }
 
                                 Icon(
@@ -270,12 +279,15 @@ fun SettingsScreen(
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Column {
                                             Text(
-                                                text = strings.patientLinkCode,
+                                                text = if (currentUser?.role == UserRole.CAREGIVER) "Linked Patient Code" else strings.patientLinkCode,
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
+                                            val displayCode = currentUser?.patientLinkCode?.takeIf { it.isNotBlank() }
+                                                ?: currentUser?.linkedPatientCode?.takeIf { it.isNotBlank() }
+                                                ?: "SM-${(currentUser?.id ?: 1000)}"
                                             Text(
-                                                text = currentUser?.patientLinkCode ?: "SM-8492",
+                                                text = displayCode,
                                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                                 color = MaterialTheme.colorScheme.primary
                                             )
@@ -284,7 +296,9 @@ fun SettingsScreen(
 
                                     TextButton(
                                         onClick = {
-                                            val code = currentUser?.patientLinkCode ?: "SM-8492"
+                                            val code = currentUser?.patientLinkCode?.takeIf { it.isNotBlank() }
+                                                ?: currentUser?.linkedPatientCode?.takeIf { it.isNotBlank() }
+                                                ?: "SM-${(currentUser?.id ?: 1000)}"
                                             clipboardManager.setText(AnnotatedString(code))
                                             scope.launch { snackbarHostState.showSnackbar(strings.codeCopied) }
                                         },
@@ -300,56 +314,58 @@ fun SettingsScreen(
                     }
                 }
 
-                // 2. Role Switcher for Testing (Caregiver Dashboard vs Patient Mode)
-                item {
-                    GlassCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(24.dp),
-                        darkTheme = darkTheme,
-                        onClick = onNavigateToCaregiverDashboard
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(18.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                // 2. Caregiver Dashboard (Only shown for Caregiver role)
+                if (currentUser?.role == UserRole.CAREGIVER) {
+                    item {
+                        GlassCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(24.dp),
+                            darkTheme = darkTheme,
+                            onClick = onNavigateToCaregiverDashboard
                         ) {
-                            Box(
+                            Row(
                                 modifier = Modifier
-                                    .size(46.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.secondaryContainer),
-                                contentAlignment = Alignment.Center
+                                    .fillMaxWidth()
+                                    .padding(18.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(46.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.secondaryContainer),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.DashboardCustomize,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(14.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = strings.caregiverDashboard,
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "View memory stats, cognitive logs & set reminders",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
                                 Icon(
-                                    imageVector = Icons.Default.DashboardCustomize,
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.size(24.dp)
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(16.dp)
                                 )
                             }
-
-                            Spacer(modifier = Modifier.width(14.dp))
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = strings.caregiverDashboard,
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "View memory stats, cognitive logs & set reminders",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(16.dp)
-                            )
                         }
                     }
                 }

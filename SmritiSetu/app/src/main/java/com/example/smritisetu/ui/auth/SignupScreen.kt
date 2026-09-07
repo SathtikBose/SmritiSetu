@@ -21,6 +21,12 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import com.example.smritisetu.data.AuthManager
 import com.example.smritisetu.data.LocalAppStrings
 import com.example.smritisetu.data.UserRole
@@ -31,6 +37,7 @@ fun SignupScreen(
     onSignupSuccess: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -43,6 +50,40 @@ fun SignupScreen(
     var isLoading by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val strings = LocalAppStrings.current
+
+    val gso = remember {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestEmail()
+            .requestProfile()
+            .build()
+    }
+    val googleSignInClient = remember(context) { GoogleSignIn.getClient(context, gso) }
+
+    val googleLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        isLoading = false
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            if (account != null) {
+                val authRes = AuthManager.loginWithGoogleAccount(account, selectedRole)
+                if (authRes.isSuccess) {
+                    onSignupSuccess()
+                } else {
+                    errorMessage = authRes.exceptionOrNull()?.message ?: "Google signup failed"
+                }
+            }
+        } catch (e: ApiException) {
+            val currentAccount = GoogleSignIn.getLastSignedInAccount(context)
+            if (currentAccount != null) {
+                AuthManager.loginWithGoogleAccount(currentAccount, selectedRole)
+                onSignupSuccess()
+            } else {
+                errorMessage = "Google Sign-In: ${e.localizedMessage ?: "Status ${e.statusCode}"}"
+            }
+        }
+    }
 
     val scrollState = rememberScrollState()
 
@@ -179,7 +220,7 @@ fun SignupScreen(
                             errorMessage = null
                         },
                         label = { Text(strings.fullName) },
-                        placeholder = { Text("Dr. Ananya Sharma") },
+                        placeholder = { Text("Your Full Name") },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Person,
@@ -312,7 +353,7 @@ fun SignupScreen(
                                 email = email.trim(),
                                 pass = password,
                                 role = selectedRole,
-                                patientCodeToLink = if (selectedRole == UserRole.CAREGIVER) patientCodeToLink.ifBlank { "SM-8492" } else null
+                                patientCodeToLink = if (selectedRole == UserRole.CAREGIVER) patientCodeToLink.trim().ifBlank { null } else null
                             )
                             isLoading = false
                             if (result.isSuccess) {
@@ -362,10 +403,9 @@ fun SignupScreen(
                     // Google Sign Up Button
                     OutlinedButton(
                         onClick = {
-                            val result = AuthManager.loginWithGoogle()
-                            if (result.isSuccess) {
-                                onSignupSuccess()
-                            }
+                            errorMessage = null
+                            isLoading = true
+                            googleLauncher.launch(googleSignInClient.signInIntent)
                         },
                         modifier = Modifier
                             .fillMaxWidth()

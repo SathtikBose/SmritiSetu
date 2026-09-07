@@ -98,7 +98,11 @@ class AuthManagerTest {
     @Test
     fun buyPerk_hint_deducts1000Coins_andIncrementsCount() {
         AuthManager.login("user@smritisetu.org", "pass")
-        // Start with 1000 coins
+        // Start with 0 coins
+        assertEquals(0, AuthManager.currentUser.value?.coins)
+
+        // Add 1000 coins
+        AuthManager.addRewards(xp = 0, coins = 1000)
         assertEquals(1000, AuthManager.currentUser.value?.coins)
 
         val result = AuthManager.buyPerk(PerkType.HINT)
@@ -115,8 +119,8 @@ class AuthManagerTest {
     @Test
     fun buyPerk_skipLevel_deducts2000Coins() {
         AuthManager.login("user@smritisetu.org", "pass")
-        // Add 2000 coins (total 3000)
-        AuthManager.addRewards(xp = 0, coins = 2000)
+        // Add 3000 coins
+        AuthManager.addRewards(xp = 0, coins = 3000)
         assertEquals(3000, AuthManager.currentUser.value?.coins)
 
         val result = AuthManager.buyPerk(PerkType.SKIP_LEVEL)
@@ -133,6 +137,7 @@ class AuthManagerTest {
     @Test
     fun buyPerk_showAgain_deducts800Coins_andIncrementsCount() {
         AuthManager.login("user@smritisetu.org", "pass")
+        AuthManager.addRewards(xp = 0, coins = 1000)
         assertEquals(1000, AuthManager.currentUser.value?.coins)
         assertEquals(0, AuthManager.showAgainCount.value)
 
@@ -153,7 +158,8 @@ class AuthManagerTest {
         // No hints initially
         assertFalse(AuthManager.useHint())
 
-        // Buy a hint
+        // Add coins and buy a hint
+        AuthManager.addRewards(xp = 0, coins = 1000)
         AuthManager.buyPerk(PerkType.HINT)
         assertEquals(1, AuthManager.hintsCount.value)
 
@@ -163,15 +169,11 @@ class AuthManagerTest {
     }
 
     @Test
-    fun defaultLevels_firstFiveUnlocked() {
-        assertEquals(5, AuthManager.highestUnlockedLevel.value)
+    fun defaultLevels_firstLevelUnlocked() {
+        assertEquals(1, AuthManager.highestUnlockedLevel.value)
         assertTrue(AuthManager.isLevelUnlocked(1))
-        assertTrue(AuthManager.isLevelUnlocked(2))
-        assertTrue(AuthManager.isLevelUnlocked(3))
-        assertTrue(AuthManager.isLevelUnlocked(4))
-        assertTrue(AuthManager.isLevelUnlocked(5))
-        assertFalse(AuthManager.isLevelUnlocked(6))
-        assertFalse(AuthManager.isLevelUnlocked(7))
+        assertFalse(AuthManager.isLevelUnlocked(2))
+        assertFalse(AuthManager.isLevelUnlocked(3))
     }
 
     @Test
@@ -322,32 +324,27 @@ class AuthManagerTest {
     }
 
     @Test
-    fun defaultPatternLevels_firstFiveUnlocked() {
-        assertEquals(5, AuthManager.highestUnlockedPatternLevel.value)
+    fun defaultPatternLevels_firstLevelUnlocked() {
+        assertEquals(1, AuthManager.highestUnlockedPatternLevel.value)
         assertTrue(AuthManager.isPatternLevelUnlocked(1))
-        assertTrue(AuthManager.isPatternLevelUnlocked(5))
-        assertFalse(AuthManager.isPatternLevelUnlocked(6))
+        assertFalse(AuthManager.isPatternLevelUnlocked(2))
     }
 
     @Test
     fun unlockNextPatternLevel_incrementsWhenCurrentIsHighest() {
         AuthManager.login("user@smritisetu.org", "pass")
-        assertEquals(5, AuthManager.highestUnlockedPatternLevel.value)
+        assertEquals(1, AuthManager.highestUnlockedPatternLevel.value)
 
-        // Completing level 3 does not increment highest unlocked (remains 5)
-        AuthManager.unlockNextPatternLevel(3)
-        assertEquals(5, AuthManager.highestUnlockedPatternLevel.value)
+        // Completing level 1 unlocks level 2
+        AuthManager.unlockNextPatternLevel(1)
+        assertEquals(2, AuthManager.highestUnlockedPatternLevel.value)
+        assertTrue(AuthManager.isPatternLevelUnlocked(2))
+        assertFalse(AuthManager.isPatternLevelUnlocked(3))
 
-        // Completing level 5 unlocks level 6
-        AuthManager.unlockNextPatternLevel(5)
-        assertEquals(6, AuthManager.highestUnlockedPatternLevel.value)
-        assertTrue(AuthManager.isPatternLevelUnlocked(6))
-        assertFalse(AuthManager.isPatternLevelUnlocked(7))
-
-        // Completing level 6 unlocks level 7
-        AuthManager.unlockNextPatternLevel(6)
-        assertEquals(7, AuthManager.highestUnlockedPatternLevel.value)
-        assertTrue(AuthManager.isPatternLevelUnlocked(7))
+        // Completing level 2 unlocks level 3
+        AuthManager.unlockNextPatternLevel(2)
+        assertEquals(3, AuthManager.highestUnlockedPatternLevel.value)
+        assertTrue(AuthManager.isPatternLevelUnlocked(3))
     }
 
     @Test

@@ -26,7 +26,14 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import com.example.smritisetu.data.AuthManager
+import com.example.smritisetu.data.UserRole
 
 @Composable
 fun LoginScreen(
@@ -35,12 +42,47 @@ fun LoginScreen(
     onLoginSuccess: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+
+    val gso = remember {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestEmail()
+            .requestProfile()
+            .build()
+    }
+    val googleSignInClient = remember(context) { GoogleSignIn.getClient(context, gso) }
+
+    val googleLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        isLoading = false
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            if (account != null) {
+                val authRes = AuthManager.loginWithGoogleAccount(account, UserRole.PATIENT)
+                if (authRes.isSuccess) {
+                    onLoginSuccess()
+                } else {
+                    errorMessage = authRes.exceptionOrNull()?.message ?: "Google login failed"
+                }
+            }
+        } catch (e: ApiException) {
+            val currentAccount = GoogleSignIn.getLastSignedInAccount(context)
+            if (currentAccount != null) {
+                AuthManager.loginWithGoogleAccount(currentAccount, UserRole.PATIENT)
+                onLoginSuccess()
+            } else {
+                errorMessage = "Google Sign-In: ${e.localizedMessage ?: "Status ${e.statusCode}"}"
+            }
+        }
+    }
 
     val scrollState = rememberScrollState()
 
@@ -257,10 +299,9 @@ fun LoginScreen(
                     // Google Sign-In Button
                     OutlinedButton(
                         onClick = {
-                            val result = AuthManager.loginWithGoogle()
-                            if (result.isSuccess) {
-                                onLoginSuccess()
-                            }
+                            errorMessage = null
+                            isLoading = true
+                            googleLauncher.launch(googleSignInClient.signInIntent)
                         },
                         modifier = Modifier
                             .fillMaxWidth()

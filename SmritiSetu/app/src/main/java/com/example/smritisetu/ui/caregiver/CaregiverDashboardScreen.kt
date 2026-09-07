@@ -26,6 +26,7 @@ import com.example.smritisetu.data.AuthManager
 import com.example.smritisetu.data.CaregiverReminder
 import com.example.smritisetu.data.CognitiveGameLog
 import com.example.smritisetu.data.LocalAppStrings
+import com.example.smritisetu.data.UserRole
 import com.example.smritisetu.theme.GlassCard
 import com.example.smritisetu.theme.getGlassGradientBrush
 import com.example.smritisetu.theme.isAppInDarkTheme
@@ -256,15 +257,31 @@ fun CaregiverDashboardScreen(
 
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = currentUser?.name ?: "Dr. Ananya Sharma",
+                                    text = if (currentUser?.role == UserRole.CAREGIVER) {
+                                        currentUser?.name?.takeIf { it.isNotBlank() } ?: "Caregiver"
+                                    } else {
+                                        currentUser?.name?.takeIf { it.isNotBlank() } ?: "Patient"
+                                    },
                                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
-                                Text(
-                                    text = "${currentUser?.gender ?: "Female"} • ${currentUser?.age ?: 68} Years",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                val details = listOfNotNull(
+                                    currentUser?.gender?.takeIf { it.isNotBlank() },
+                                    currentUser?.age?.takeIf { it > 0 }?.let { "$it Years" }
+                                ).joinToString(" • ")
+                                if (details.isNotBlank()) {
+                                    Text(
+                                        text = details,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                } else if (!currentUser?.email.isNullOrBlank()) {
+                                    Text(
+                                        text = currentUser?.email ?: "",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
 
                             // Patient Code Badge
@@ -283,7 +300,9 @@ fun CaregiverDashboardScreen(
                                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                                     )
                                     Text(
-                                        text = currentUser?.linkedPatientCode ?: currentUser?.patientLinkCode ?: "SM-8492",
+                                        text = currentUser?.linkedPatientCode?.takeIf { it.isNotBlank() }
+                                            ?: currentUser?.patientLinkCode?.takeIf { it.isNotBlank() }
+                                            ?: "N/A",
                                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                                         color = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
