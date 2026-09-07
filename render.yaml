@@ -10,3 +10,12 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.8
+
+  - type: web
+    name: smritisetu-backend
+    env: docker
+    rootDir: backend
+    dockerfilePath: Dockerfile
+    healthCheckPath: /
+    autoDeploy: true
+

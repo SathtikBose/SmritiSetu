@@ -6,6 +6,10 @@ import androidx.compose.ui.Modifier
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.example.smritisetu.data.AuthManager
+import com.example.smritisetu.data.UserRole
 import com.example.smritisetu.ui.auth.ForgotPasswordScreen
 import com.example.smritisetu.ui.auth.LoginScreen
 import com.example.smritisetu.ui.auth.SignupScreen
@@ -21,7 +25,16 @@ import com.example.smritisetu.ui.shop.ShopScreen
 
 @Composable
 fun MainNavigation() {
-    val backStack = rememberNavBackStack(MainRoute)
+    val isLoggedIn by AuthManager.isLoggedIn.collectAsState()
+    val currentUser by AuthManager.currentUser.collectAsState()
+
+    val initialRoute = when {
+        !isLoggedIn -> LoginRoute
+        currentUser?.role == UserRole.CAREGIVER -> CaregiverDashboardRoute
+        else -> MainRoute
+    }
+
+    val backStack = rememberNavBackStack(initialRoute)
 
     NavDisplay(
         backStack = backStack,
@@ -34,7 +47,11 @@ fun MainNavigation() {
                         onNavigateToForgotPassword = { backStack.add(ForgotPasswordRoute) },
                         onLoginSuccess = {
                             backStack.clear()
-                            backStack.add(MainRoute)
+                            if (AuthManager.currentUser.value?.role == UserRole.CAREGIVER) {
+                                backStack.add(CaregiverDashboardRoute)
+                            } else {
+                                backStack.add(MainRoute)
+                            }
                         }
                     )
                 }
@@ -43,7 +60,11 @@ fun MainNavigation() {
                         onNavigateToLogin = { backStack.removeLastOrNull() },
                         onSignupSuccess = {
                             backStack.clear()
-                            backStack.add(MainRoute)
+                            if (AuthManager.currentUser.value?.role == UserRole.CAREGIVER) {
+                                backStack.add(CaregiverDashboardRoute)
+                            } else {
+                                backStack.add(MainRoute)
+                            }
                         }
                     )
                 }
@@ -63,7 +84,6 @@ fun MainNavigation() {
                         onNavigateToLevelSelect = { backStack.add(MatchCardLevelSelectRoute) },
                         onNavigateToPatternLevelSelect = { backStack.add(PatternGameLevelSelectRoute) },
                         onNavigateToShop = { backStack.add(ShopRoute) },
-                        onNavigateToCaregiverDashboard = { backStack.add(CaregiverDashboardRoute) },
                         onLogout = {
                             backStack.clear()
                             backStack.add(LoginRoute)
@@ -72,7 +92,10 @@ fun MainNavigation() {
                 }
                 entry<CaregiverDashboardRoute> {
                     CaregiverDashboardScreen(
-                        onSwitchToPatientMode = { backStack.removeLastOrNull() }
+                        onLogout = {
+                            backStack.clear()
+                            backStack.add(LoginRoute)
+                        }
                     )
                 }
                 entry<EditProfileRoute> {
