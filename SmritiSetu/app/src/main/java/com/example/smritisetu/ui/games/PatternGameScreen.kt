@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smritisetu.data.AuthManager
@@ -49,21 +50,23 @@ import kotlinx.coroutines.launch
 
 data class PatternSymbol(
     val id: Int,
-    val name: String,
+    val getLabel: (com.example.smritisetu.data.AppStrings) -> String,
     val icon: ImageVector,
     val colorHex: Long,
     val regionTag: String = ""
-)
+) {
+    fun localizedName(strings: com.example.smritisetu.data.AppStrings): String = getLabel(strings)
+}
 
 private val symbolPool = listOf(
-    PatternSymbol(1, "Bamboo Grove", Icons.Default.Yard, 0xFF0F4C3A, "Mizoram"),
-    PatternSymbol(2, "Kopou Orchid", Icons.Default.LocalFlorist, 0xFFD81B60, "Assam"),
-    PatternSymbol(3, "Assam Tea Leaf", Icons.Default.Spa, 0xFF2E7D32, "Assam"),
-    PatternSymbol(4, "Bihu Dhol", Icons.Default.Audiotrack, 0xFFC66B3D, "Assam"),
-    PatternSymbol(5, "Kaziranga Rhino", Icons.Default.EmojiNature, 0xFF37474F, "Assam"),
-    PatternSymbol(6, "Red Panda", Icons.Default.CrueltyFree, 0xFFE65100, "Sikkim"),
-    PatternSymbol(7, "Arunachal Sun", Icons.Default.WbSunny, 0xFFFFB300, "Arunachal"),
-    PatternSymbol(8, "Brahmaputra Wave", Icons.Default.Waves, 0xFF0288D1, "North East")
+    PatternSymbol(1, { it.patternBamboo }, Icons.Default.Yard, 0xFF0F4C3A, "Mizoram"),
+    PatternSymbol(2, { it.patternOrchid }, Icons.Default.LocalFlorist, 0xFFD81B60, "Assam"),
+    PatternSymbol(3, { it.patternTeaLeaf }, Icons.Default.Spa, 0xFF2E7D32, "Assam"),
+    PatternSymbol(4, { it.patternDhol }, Icons.Default.Audiotrack, 0xFFC66B3D, "Assam"),
+    PatternSymbol(5, { it.patternRhino }, Icons.Default.EmojiNature, 0xFF37474F, "Assam"),
+    PatternSymbol(6, { it.patternRedPanda }, Icons.Default.CrueltyFree, 0xFFE65100, "Sikkim"),
+    PatternSymbol(7, { it.patternSun }, Icons.Default.WbSunny, 0xFFFFB300, "Arunachal"),
+    PatternSymbol(8, { it.patternWave }, Icons.Default.Waves, 0xFF0288D1, "North East")
 )
 
 data class PatternLevelData(
@@ -774,7 +777,7 @@ fun PatternGameScreen(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Pattern Recall",
+                                text = strings.patternRecallBadge,
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
@@ -793,14 +796,14 @@ fun PatternGameScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "🧠 What comes next in the sequence?",
+                            text = strings.patternQuestionPrompt,
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Observe the order of symbols and choose the missing piece.",
+                            text = strings.patternQuestionSub,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
@@ -904,7 +907,7 @@ fun PatternGameScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "❌ Wrong Pattern! Try Again",
+                                text = strings.patternWrongTryAgain,
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                 color = Color.White
                             )
@@ -919,7 +922,7 @@ fun PatternGameScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Select what comes next:",
+                        text = strings.patternSelectNext,
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onBackground
                     )
@@ -1010,6 +1013,7 @@ private fun PatternItemTile(
     stepNumber: Int
 ) {
     val symbolColor = Color(symbol.colorHex)
+    val strings = LocalAppStrings.current
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -1025,7 +1029,7 @@ private fun PatternItemTile(
         ) {
             Icon(
                 imageVector = symbol.icon,
-                contentDescription = symbol.name,
+                contentDescription = symbol.localizedName(strings),
                 tint = symbolColor,
                 modifier = Modifier.size(34.dp)
             )
@@ -1048,6 +1052,7 @@ private fun ChoiceTile(
     darkTheme: Boolean
 ) {
     val symbolColor = Color(symbol.colorHex)
+    val strings = LocalAppStrings.current
 
     GlassCard(
         modifier = Modifier
@@ -1069,36 +1074,40 @@ private fun ChoiceTile(
                         else -> Color.Transparent
                     }
                 )
-                .padding(10.dp),
+                .padding(8.dp),
             contentAlignment = Alignment.Center
         ) {
             if (isEliminated) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "Eliminated",
+                    contentDescription = null,
                     tint = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
                     modifier = Modifier.size(30.dp)
                 )
             } else {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
                 ) {
                     Icon(
                         imageVector = symbol.icon,
-                        contentDescription = symbol.name,
+                        contentDescription = symbol.localizedName(strings),
                         tint = if (isSelectedWrong) MaterialTheme.colorScheme.error
                         else if (!enabled) symbolColor.copy(alpha = 0.4f)
                         else symbolColor,
-                        modifier = Modifier.size(38.dp)
+                        modifier = Modifier.size(36.dp)
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = symbol.name,
+                        text = symbol.localizedName(strings),
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                         color = if (isSelectedWrong) MaterialTheme.colorScheme.error
                         else if (!enabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                        else MaterialTheme.colorScheme.onSurface
+                        else MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                 }
             }
