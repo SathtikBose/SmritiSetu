@@ -29,6 +29,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.example.smritisetu.audio.SoundManager
 import com.example.smritisetu.data.AuthManager
 import com.example.smritisetu.data.CognitiveGameLog
 import com.example.smritisetu.data.LocalAppStrings
@@ -40,33 +48,42 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+data class NorthEastCardData(
+    val icon: ImageVector,
+    val label: String,
+    val imageUrl: String? = null,
+    val region: String = ""
+)
+
 data class CardItem(
     val id: Int,
     val pairId: Int,
     val icon: ImageVector,
     val label: String,
+    val imageUrl: String? = null,
+    val region: String = "",
     var isFlipped: Boolean = false,
     var isMatched: Boolean = false,
     var isHighlighted: Boolean = false
 )
 
 private val culturalSymbols = listOf(
-    Pair(Icons.Default.Spa, "Tea Leaf"),
-    Pair(Icons.Default.Audiotrack, "Bihu Dhol"),
-    Pair(Icons.Default.WbSunny, "River Dawn"),
-    Pair(Icons.Default.LocalFlorist, "Kopou Orchid"),
-    Pair(Icons.Default.Palette, "Gamusa Motif"),
-    Pair(Icons.Default.EmojiNature, "Kaziranga Rhino"),
-    Pair(Icons.Default.Star, "Golden Star"),
-    Pair(Icons.Default.CrueltyFree, "Peacock"),
-    Pair(Icons.Default.Notifications, "Temple Bell"),
-    Pair(Icons.Default.Park, "Rainforest"),
-    Pair(Icons.Default.Sailing, "River Boat"),
-    Pair(Icons.Default.Yard, "Muga Silk"),
-    Pair(Icons.Default.FilterVintage, "Sacred Lotus"),
-    Pair(Icons.Default.MusicNote, "Bihu Horn"),
-    Pair(Icons.Default.Favorite, "Warm Hearth"),
-    Pair(Icons.Default.Diamond, "Heritage Gem")
+    NorthEastCardData(Icons.Default.EmojiNature, "Kaziranga Rhino", "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Indian_rhinoceros_%28Rhinoceros_unicornis%29_4.jpg/320px-Indian_rhinoceros_%28Rhinoceros_unicornis%29_4.jpg", "Assam"),
+    NorthEastCardData(Icons.Default.CrueltyFree, "Red Panda", "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Red_Panda_%28251910322%29.jpeg/320px-Red_Panda_%28251910322%29.jpeg", "Sikkim"),
+    NorthEastCardData(Icons.Default.Flight, "Hornbill Bird", "https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Great_hornbill_01.jpg/320px-Great_hornbill_01.jpg", "Nagaland"),
+    NorthEastCardData(Icons.Default.Park, "Living Root Bridge", "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Living_root_bridge_%28Nongriat%2C_Meghalaya%29.jpg/320px-Living_root_bridge_%28Nongriat%2C_Meghalaya%29.jpg", "Meghalaya"),
+    NorthEastCardData(Icons.Default.Spa, "Assam Tea Leaf", "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Tea_gardens%2C_Assam.jpg/320px-Tea_gardens%2C_Assam.jpg", "Assam"),
+    NorthEastCardData(Icons.Default.Audiotrack, "Bihu Dhol", "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Bihu_dhol_and_pepa.jpg/320px-Bihu_dhol_and_pepa.jpg", "Assam"),
+    NorthEastCardData(Icons.Default.LocalFlorist, "Kopou Orchid", "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Rhynchostylis_retusa_-_Kopou_Phool_01.jpg/320px-Rhynchostylis_retusa_-_Kopou_Phool_01.jpg", "North East"),
+    NorthEastCardData(Icons.Default.Pets, "Sangai Deer", "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Eld%27s_deer_sangai.jpg/320px-Eld%27s_deer_sangai.jpg", "Manipur"),
+    NorthEastCardData(Icons.Default.AccountBalance, "Tawang Monastery", "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Tawang_Monastery_Arunachal_Pradesh.jpg/320px-Tawang_Monastery_Arunachal_Pradesh.jpg", "Arunachal"),
+    NorthEastCardData(Icons.Default.Yard, "Cheraw Bamboo", "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Cheraw_Dance_Mizoram.jpg/320px-Cheraw_Dance_Mizoram.jpg", "Mizoram"),
+    NorthEastCardData(Icons.Default.Palette, "Gamusa Weave", "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Assamese_Gamosa.jpg/320px-Assamese_Gamosa.jpg", "Assam"),
+    NorthEastCardData(Icons.Default.Sailing, "Majuli Island", "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Majuli_Island_Sunset.jpg/320px-Majuli_Island_Sunset.jpg", "Brahmaputra"),
+    NorthEastCardData(Icons.Default.Landscape, "Kangchenjunga", "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Kangchenjunga-from-pelling.jpg/320px-Kangchenjunga-from-pelling.jpg", "Sikkim"),
+    NorthEastCardData(Icons.Default.Water, "River Dolphin", "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Platanista_gangetica.jpg/320px-Platanista_gangetica.jpg", "Assam"),
+    NorthEastCardData(Icons.Default.Visibility, "Clouded Leopard", "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Neofelis_nebulosa.jpg/320px-Neofelis_nebulosa.jpg", "Meghalaya"),
+    NorthEastCardData(Icons.Default.Waves, "Loktak Lake", "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Loktak_Lake_Manipur.jpg/320px-Loktak_Lake_Manipur.jpg", "Manipur")
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -172,9 +189,9 @@ fun MatchCardGameScreen(
         val selectedSymbols = culturalSymbols.shuffled().take(numPairs)
         val cardList = mutableListOf<CardItem>()
         var cardId = 0
-        selectedSymbols.forEachIndexed { pairIndex, (icon, label) ->
-            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = icon, label = label, isFlipped = true))
-            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = icon, label = label, isFlipped = true))
+        selectedSymbols.forEachIndexed { pairIndex, item ->
+            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = item.icon, label = item.label, imageUrl = item.imageUrl, region = item.region, isFlipped = true))
+            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = item.icon, label = item.label, imageUrl = item.imageUrl, region = item.region, isFlipped = true))
         }
         cardList.shuffle()
         mutableStateOf(cardList.toList())
@@ -214,9 +231,9 @@ fun MatchCardGameScreen(
         val selectedSymbols = culturalSymbols.shuffled().take(numPairs)
         val cardList = mutableListOf<CardItem>()
         var cardId = 0
-        selectedSymbols.forEachIndexed { pairIndex, (icon, label) ->
-            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = icon, label = label, isFlipped = true))
-            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = icon, label = label, isFlipped = true))
+        selectedSymbols.forEachIndexed { pairIndex, item ->
+            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = item.icon, label = item.label, imageUrl = item.imageUrl, region = item.region, isFlipped = true))
+            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = item.icon, label = item.label, imageUrl = item.imageUrl, region = item.region, isFlipped = true))
         }
         cardList.shuffle()
         cards = cardList.toList()
@@ -379,10 +396,13 @@ fun MatchCardGameScreen(
         }
     }
 
+    val context = LocalContext.current
+
     // Handle Card Click
     fun onCardClick(card: CardItem) {
         if (isInitialPreview || isPeekActive || isProcessingMatch || card.isFlipped || card.isMatched || showTimesUpDialog || showVictoryDialog) return
 
+        SoundManager.playFlip(context)
         lastInteractionTime = System.currentTimeMillis()
 
         // Remove highlights on user action
@@ -416,11 +436,13 @@ fun MatchCardGameScreen(
                 delay(800L)
                 if (firstSelectedCard?.pairId == card.pairId) {
                     // Match found!
+                    SoundManager.playCorrect(context)
                     cards = cards.map {
                         if (it.pairId == card.pairId) it.copy(isMatched = true, isFlipped = true) else it
                     }
                 } else {
                     // Missed: flip back
+                    SoundManager.playWrong(context)
                     cards = cards.map {
                         if (it.id == firstSelectedCard?.id || it.id == card.id) it.copy(isFlipped = false) else it
                     }
@@ -1128,12 +1150,28 @@ fun FlippableCardTile(
                     verticalArrangement = Arrangement.Center,
                     modifier = Modifier.graphicsLayer { rotationY = 180f }
                 ) {
-                    Icon(
-                        imageVector = card.icon,
-                        contentDescription = card.label,
-                        tint = if (card.isMatched) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(if (gridColumns == 4) 26.dp else 34.dp)
-                    )
+                    if (!card.imageUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(card.imageUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = card.label,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(if (gridColumns == 4) 34.dp else 46.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            error = rememberVectorPainter(card.icon),
+                            placeholder = rememberVectorPainter(card.icon)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = card.icon,
+                            contentDescription = card.label,
+                            tint = if (card.isMatched) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(if (gridColumns == 4) 26.dp else 34.dp)
+                        )
+                    }
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = card.label,
@@ -1145,13 +1183,34 @@ fun FlippableCardTile(
                     )
                 }
             } else {
-                // Back Face (Pattern / Icon)
-                Icon(
-                    imageVector = Icons.Default.Psychology,
-                    contentDescription = "Hidden Card",
-                    tint = if (card.isHighlighted) Color(0xFFD97706) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
-                    modifier = Modifier.size(if (gridColumns == 4) 24.dp else 30.dp)
-                )
+                // Back Face: North East Gamosa / Muga diamond motif
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(2.dp)
+                        .background(
+                            Brush.radialGradient(
+                                colors = if (darkTheme) 
+                                    listOf(Color(0xFF0F4C3A), Color(0xFF0A2E23)) 
+                                else 
+                                    listOf(Color(0xFFFBF8F1), Color(0xFFE8F5E9))
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .border(
+                            1.dp,
+                            if (card.isHighlighted) Color(0xFFF59E0B) else if (darkTheme) Color(0x40D4AF37) else Color(0x60D90429),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FilterVintage,
+                        contentDescription = "North East Motif",
+                        tint = if (card.isHighlighted) Color(0xFFD97706) else if (darkTheme) Color(0xFFD4AF37) else Color(0xFFD90429),
+                        modifier = Modifier.size(if (gridColumns == 4) 20.dp else 26.dp)
+                    )
+                }
             }
         }
     }

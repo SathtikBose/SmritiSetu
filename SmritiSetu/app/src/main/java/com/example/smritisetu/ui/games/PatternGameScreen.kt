@@ -3,7 +3,11 @@ package com.example.smritisetu.ui.games
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.ui.platform.LocalContext
+import com.example.smritisetu.audio.SoundManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -47,18 +51,19 @@ data class PatternSymbol(
     val id: Int,
     val name: String,
     val icon: ImageVector,
-    val colorHex: Long
+    val colorHex: Long,
+    val regionTag: String = ""
 )
 
 private val symbolPool = listOf(
-    PatternSymbol(1, "Red Triangle", Icons.Default.ChangeHistory, 0xFFFF5252),
-    PatternSymbol(2, "Cyan Diamond", Icons.Default.Diamond, 0xFF00E5FF),
-    PatternSymbol(3, "Amber Circle", Icons.Default.Circle, 0xFFFFD600),
-    PatternSymbol(4, "Green Square", Icons.Default.Square, 0xFF00E676),
-    PatternSymbol(5, "Golden Star", Icons.Default.Star, 0xFFFF6D00),
-    PatternSymbol(6, "Lotus Blossom", Icons.Default.LocalFlorist, 0xFFFF4081),
-    PatternSymbol(7, "Green Leaf", Icons.Default.Spa, 0xFF69F0AE),
-    PatternSymbol(8, "Temple Bell", Icons.Default.Notifications, 0xFF7C4DFF)
+    PatternSymbol(1, "Bamboo Grove", Icons.Default.Yard, 0xFF0F4C3A, "Mizoram"),
+    PatternSymbol(2, "Kopou Orchid", Icons.Default.LocalFlorist, 0xFFD81B60, "Assam"),
+    PatternSymbol(3, "Assam Tea Leaf", Icons.Default.Spa, 0xFF2E7D32, "Assam"),
+    PatternSymbol(4, "Bihu Dhol", Icons.Default.Audiotrack, 0xFFC66B3D, "Assam"),
+    PatternSymbol(5, "Kaziranga Rhino", Icons.Default.EmojiNature, 0xFF37474F, "Assam"),
+    PatternSymbol(6, "Red Panda", Icons.Default.CrueltyFree, 0xFFE65100, "Sikkim"),
+    PatternSymbol(7, "Arunachal Sun", Icons.Default.WbSunny, 0xFFFFB300, "Arunachal"),
+    PatternSymbol(8, "Brahmaputra Wave", Icons.Default.Waves, 0xFF0288D1, "North East")
 )
 
 data class PatternLevelData(
@@ -93,8 +98,10 @@ fun PatternGameScreen(
     var levelTimeElapsedSeconds by remember { mutableLongStateOf(0L) }
     var eliminatedChoiceIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var selectedWrongChoiceId by remember { mutableStateOf<Int?>(null) }
+    var showWrongBanner by remember { mutableStateOf(false) }
     var isSuccessAnimation by remember { mutableStateOf(false) }
     var hasUsedPerkThisLevel by remember(currentLevel) { mutableStateOf(false) }
+    val context = LocalContext.current
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -224,6 +231,7 @@ fun PatternGameScreen(
 
         if (symbol.id == levelData.correctNextSymbol.id) {
             // Correct Choice!
+            SoundManager.playCorrect(context)
             isSuccessAnimation = true
             val timeElapsedMs = System.currentTimeMillis() - levelStartTime
             levelTimeElapsedSeconds = timeElapsedMs / 1000
@@ -252,12 +260,15 @@ fun PatternGameScreen(
                 showVictoryDialog = true
             }
         } else {
-            // Wrong Choice: gentle feedback
+            // Wrong Choice: audio feedback and 1-second banner
             triesCount++
             selectedWrongChoiceId = symbol.id
+            showWrongBanner = true
+            SoundManager.playWrong(context)
             scope.launch {
-                delay(800L)
+                delay(1000L) // 1 second display
                 selectedWrongChoiceId = null
+                showWrongBanner = false
             }
         }
     }
@@ -864,6 +875,39 @@ fun PatternGameScreen(
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+
+                // 1-Second Wrong Pattern Feedback Banner
+                AnimatedVisibility(
+                    visible = showWrongBanner,
+                    enter = fadeIn() + scaleIn(),
+                    exit = fadeOut() + scaleOut()
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color(0xFFD90429),
+                        shadowElevation = 8.dp,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "❌ Wrong Pattern! Try Again",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White
+                            )
                         }
                     }
                 }

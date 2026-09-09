@@ -13,6 +13,18 @@ val SecondaryWarmLight = Color(0xFFB1CCC6)
 val TertiaryGold = Color(0xFF7C5800)
 val TertiaryGoldLight = Color(0xFFFFBA25)
 
+// North East Heritage Cultural Palette
+val AssamTeaGreen = Color(0xFF0F4C3A)
+val AssamTeaGreenLight = Color(0xFF1B5E20)
+val MugaSilkGold = Color(0xFFD4AF37)
+val MugaSilkGoldLight = Color(0xFFE5C07B)
+val GamusaRed = Color(0xFFD90429)
+val GamusaRedLight = Color(0xFFFF4D6D)
+val BrahmaputraAzure = Color(0xFF1E3D59)
+val BrahmaputraMist = Color(0xFF2A9D8F)
+val BambooTerracotta = Color(0xFFC66B3D)
+val EriSilkCream = Color(0xFFFBF8F1)
+
 // Glassmorphic Colors
 val GlassLightSurface = Color(0xCCFFFFFF)       // 80% opacity white frost
 val GlassDarkSurface = Color(0xCC1A2724)        // 80% opacity dark teal-slate frost
