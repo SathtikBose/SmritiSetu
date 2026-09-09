@@ -34,8 +34,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import com.example.smritisetu.audio.SoundManager
 import com.example.smritisetu.data.AuthManager
 import com.example.smritisetu.data.CognitiveGameLog
@@ -51,7 +51,7 @@ import kotlinx.coroutines.launch
 data class NorthEastCardData(
     val icon: ImageVector,
     val label: String,
-    val imageUrl: String? = null,
+    val imageResId: Int,
     val region: String = ""
 )
 
@@ -60,7 +60,7 @@ data class CardItem(
     val pairId: Int,
     val icon: ImageVector,
     val label: String,
-    val imageUrl: String? = null,
+    val imageResId: Int,
     val region: String = "",
     var isFlipped: Boolean = false,
     var isMatched: Boolean = false,
@@ -68,22 +68,22 @@ data class CardItem(
 )
 
 private val culturalSymbols = listOf(
-    NorthEastCardData(Icons.Default.EmojiNature, "Kaziranga Rhino", "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Indian_rhinoceros_%28Rhinoceros_unicornis%29_4.jpg/320px-Indian_rhinoceros_%28Rhinoceros_unicornis%29_4.jpg", "Assam"),
-    NorthEastCardData(Icons.Default.CrueltyFree, "Red Panda", "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Red_Panda_%28251910322%29.jpeg/320px-Red_Panda_%28251910322%29.jpeg", "Sikkim"),
-    NorthEastCardData(Icons.Default.Flight, "Hornbill Bird", "https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Great_hornbill_01.jpg/320px-Great_hornbill_01.jpg", "Nagaland"),
-    NorthEastCardData(Icons.Default.Park, "Living Root Bridge", "https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Living_root_bridge_%28Nongriat%2C_Meghalaya%29.jpg/320px-Living_root_bridge_%28Nongriat%2C_Meghalaya%29.jpg", "Meghalaya"),
-    NorthEastCardData(Icons.Default.Spa, "Assam Tea Leaf", "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Tea_gardens%2C_Assam.jpg/320px-Tea_gardens%2C_Assam.jpg", "Assam"),
-    NorthEastCardData(Icons.Default.Audiotrack, "Bihu Dhol", "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Bihu_dhol_and_pepa.jpg/320px-Bihu_dhol_and_pepa.jpg", "Assam"),
-    NorthEastCardData(Icons.Default.LocalFlorist, "Kopou Orchid", "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Rhynchostylis_retusa_-_Kopou_Phool_01.jpg/320px-Rhynchostylis_retusa_-_Kopou_Phool_01.jpg", "North East"),
-    NorthEastCardData(Icons.Default.Pets, "Sangai Deer", "https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Eld%27s_deer_sangai.jpg/320px-Eld%27s_deer_sangai.jpg", "Manipur"),
-    NorthEastCardData(Icons.Default.AccountBalance, "Tawang Monastery", "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Tawang_Monastery_Arunachal_Pradesh.jpg/320px-Tawang_Monastery_Arunachal_Pradesh.jpg", "Arunachal"),
-    NorthEastCardData(Icons.Default.Yard, "Cheraw Bamboo", "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Cheraw_Dance_Mizoram.jpg/320px-Cheraw_Dance_Mizoram.jpg", "Mizoram"),
-    NorthEastCardData(Icons.Default.Palette, "Gamusa Weave", "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Assamese_Gamosa.jpg/320px-Assamese_Gamosa.jpg", "Assam"),
-    NorthEastCardData(Icons.Default.Sailing, "Majuli Island", "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Majuli_Island_Sunset.jpg/320px-Majuli_Island_Sunset.jpg", "Brahmaputra"),
-    NorthEastCardData(Icons.Default.Landscape, "Kangchenjunga", "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Kangchenjunga-from-pelling.jpg/320px-Kangchenjunga-from-pelling.jpg", "Sikkim"),
-    NorthEastCardData(Icons.Default.Water, "River Dolphin", "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Platanista_gangetica.jpg/320px-Platanista_gangetica.jpg", "Assam"),
-    NorthEastCardData(Icons.Default.Visibility, "Clouded Leopard", "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Neofelis_nebulosa.jpg/320px-Neofelis_nebulosa.jpg", "Meghalaya"),
-    NorthEastCardData(Icons.Default.Waves, "Loktak Lake", "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Loktak_Lake_Manipur.jpg/320px-Loktak_Lake_Manipur.jpg", "Manipur")
+    NorthEastCardData(Icons.Default.EmojiNature, "Kaziranga Rhino", com.example.smritisetu.R.drawable.card_rhino, "Assam"),
+    NorthEastCardData(Icons.Default.CrueltyFree, "Red Panda", com.example.smritisetu.R.drawable.card_red_panda, "Sikkim"),
+    NorthEastCardData(Icons.Default.Flight, "Hornbill Bird", com.example.smritisetu.R.drawable.card_hornbill, "Nagaland"),
+    NorthEastCardData(Icons.Default.Park, "Root Bridge", com.example.smritisetu.R.drawable.card_root_bridge, "Meghalaya"),
+    NorthEastCardData(Icons.Default.Spa, "Assam Tea", com.example.smritisetu.R.drawable.card_tea_leaf, "Assam"),
+    NorthEastCardData(Icons.Default.Audiotrack, "Bihu Dhol", com.example.smritisetu.R.drawable.card_bihu_dhol, "Assam"),
+    NorthEastCardData(Icons.Default.LocalFlorist, "Kopou Orchid", com.example.smritisetu.R.drawable.card_kopou_orchid, "North East"),
+    NorthEastCardData(Icons.Default.Pets, "Sangai Deer", com.example.smritisetu.R.drawable.card_sangai_deer, "Manipur"),
+    NorthEastCardData(Icons.Default.AccountBalance, "Tawang Monastery", com.example.smritisetu.R.drawable.card_tawang, "Arunachal"),
+    NorthEastCardData(Icons.Default.Yard, "Cheraw Bamboo", com.example.smritisetu.R.drawable.card_cheraw, "Mizoram"),
+    NorthEastCardData(Icons.Default.Palette, "Gamusa Weave", com.example.smritisetu.R.drawable.card_gamusa, "Assam"),
+    NorthEastCardData(Icons.Default.Sailing, "Majuli Island", com.example.smritisetu.R.drawable.card_majuli, "Brahmaputra"),
+    NorthEastCardData(Icons.Default.Landscape, "Kangchenjunga", com.example.smritisetu.R.drawable.card_kangchenjunga, "Sikkim"),
+    NorthEastCardData(Icons.Default.Water, "River Dolphin", com.example.smritisetu.R.drawable.card_dolphin, "Assam"),
+    NorthEastCardData(Icons.Default.Visibility, "Clouded Leopard", com.example.smritisetu.R.drawable.card_leopard, "Meghalaya"),
+    NorthEastCardData(Icons.Default.Waves, "Loktak Lake", com.example.smritisetu.R.drawable.card_loktak, "Manipur")
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -190,8 +190,8 @@ fun MatchCardGameScreen(
         val cardList = mutableListOf<CardItem>()
         var cardId = 0
         selectedSymbols.forEachIndexed { pairIndex, item ->
-            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = item.icon, label = item.label, imageUrl = item.imageUrl, region = item.region, isFlipped = true))
-            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = item.icon, label = item.label, imageUrl = item.imageUrl, region = item.region, isFlipped = true))
+            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = item.icon, label = item.label, imageResId = item.imageResId, region = item.region, isFlipped = true))
+            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = item.icon, label = item.label, imageResId = item.imageResId, region = item.region, isFlipped = true))
         }
         cardList.shuffle()
         mutableStateOf(cardList.toList())
@@ -232,8 +232,8 @@ fun MatchCardGameScreen(
         val cardList = mutableListOf<CardItem>()
         var cardId = 0
         selectedSymbols.forEachIndexed { pairIndex, item ->
-            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = item.icon, label = item.label, imageUrl = item.imageUrl, region = item.region, isFlipped = true))
-            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = item.icon, label = item.label, imageUrl = item.imageUrl, region = item.region, isFlipped = true))
+            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = item.icon, label = item.label, imageResId = item.imageResId, region = item.region, isFlipped = true))
+            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = item.icon, label = item.label, imageResId = item.imageResId, region = item.region, isFlipped = true))
         }
         cardList.shuffle()
         cards = cardList.toList()
@@ -1144,41 +1144,36 @@ fun FlippableCardTile(
             modifier = Modifier.fillMaxSize().padding(6.dp)
         ) {
             if (rotation > 90f) {
-                // Front Face (Counter-rotated by 180deg so content isn't mirrored horizontally)
+                // Front Face: Real Photo (Counter-rotated by 180deg)
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
-                    modifier = Modifier.graphicsLayer { rotationY = 180f }
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { rotationY = 180f }
+                        .padding(4.dp)
                 ) {
-                    if (!card.imageUrl.isNullOrBlank()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(card.imageUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = card.label,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(if (gridColumns == 4) 34.dp else 46.dp)
-                                .clip(RoundedCornerShape(8.dp)),
-                            error = rememberVectorPainter(card.icon),
-                            placeholder = rememberVectorPainter(card.icon)
-                        )
-                    } else {
-                        Icon(
-                            imageVector = card.icon,
-                            contentDescription = card.label,
-                            tint = if (card.isMatched) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(if (gridColumns == 4) 26.dp else 34.dp)
-                        )
-                    }
+                    Image(
+                        painter = painterResource(id = card.imageResId),
+                        contentDescription = card.label,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .border(
+                                width = 1.dp,
+                                color = if (card.isMatched) MaterialTheme.colorScheme.primary else Color(0x22000000),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                    )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = card.label,
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = if (card.isMatched) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center,
-                        fontSize = if (gridColumns == 4) 8.sp else 10.sp,
+                        fontSize = if (gridColumns == 4) 8.sp else 9.5.sp,
                         maxLines = 1
                     )
                 }
