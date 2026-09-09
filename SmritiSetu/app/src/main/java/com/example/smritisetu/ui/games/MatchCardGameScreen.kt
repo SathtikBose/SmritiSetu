@@ -1116,21 +1116,21 @@ fun FlippableCardTile(
 
     val borderStroke = when {
         card.isHighlighted -> BorderStroke(2.5.dp, Color(0xFFF59E0B))
-        card.isMatched -> BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
-        else -> BorderStroke(1.dp, if (darkTheme) Color(0x33FFFFFF) else Color(0x66FFFFFF))
+        card.isMatched -> BorderStroke(2.dp, Color(0xFF10B981))
+        else -> BorderStroke(1.dp, if (darkTheme) Color(0x44D4AF37) else Color(0x33D90429))
     }
 
     val cardBgColor = when {
-        card.isMatched -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f)
-        rotation > 90f -> if (darkTheme) Color(0xEB1E332E) else Color(0xF5FFFFFF)
+        card.isMatched -> if (darkTheme) Color(0xCC0F382C) else Color(0xFFE8F5E9)
+        rotation > 90f -> if (darkTheme) Color(0xF0182E27) else Color(0xFFFFFDF8)
         card.isHighlighted -> Color(0xFFFEF3C7)
-        else -> if (darkTheme) Color(0xCC1A2B27) else Color(0xE6FFFFFF)
+        else -> if (darkTheme) Color(0xEE112922) else Color(0xFFFFFDF5)
     }
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .aspectRatio(1.0f)
+            .aspectRatio(0.72f) // Authentic portrait playing card ratio (height ~ 1.39x width)
             .scale(cardScale)
             .graphicsLayer {
                 rotationY = rotation
@@ -1139,24 +1139,24 @@ fun FlippableCardTile(
             .clickable(enabled = !isRevealed && !isProcessingMatch && !isPeekActive) {
                 onClick()
             },
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
         color = cardBgColor,
         border = borderStroke,
-        shadowElevation = if (card.isHighlighted) 8.dp else 3.dp
+        shadowElevation = if (card.isHighlighted) 8.dp else if (card.isMatched) 1.dp else 4.dp
     ) {
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.fillMaxSize().padding(6.dp)
+            modifier = Modifier.fillMaxSize().padding(4.dp)
         ) {
             if (rotation > 90f) {
-                // Front Face: Real Photo (Counter-rotated by 180deg)
+                // Front Face: Authentic Photograph & Localized Label
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
+                    verticalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier
                         .fillMaxSize()
                         .graphicsLayer { rotationY = 180f }
-                        .padding(4.dp)
+                        .padding(3.dp)
                 ) {
                     Image(
                         painter = painterResource(id = card.imageResId),
@@ -1165,52 +1165,78 @@ fun FlippableCardTile(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(9.dp))
                             .border(
                                 width = 1.dp,
-                                color = if (card.isMatched) MaterialTheme.colorScheme.primary else Color(0x22000000),
-                                shape = RoundedCornerShape(10.dp)
+                                color = if (card.isMatched) Color(0xFF10B981) else Color(0x25000000),
+                                shape = RoundedCornerShape(9.dp)
                             )
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(3.dp))
                     Text(
                         text = card.localizedLabel(strings),
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = if (card.isMatched) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                        color = if (card.isMatched) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center,
-                        fontSize = if (gridColumns == 4) 7.5.sp else 9.sp,
+                        fontSize = if (gridColumns >= 4) 7.5.sp else 9.sp,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 2.dp)
                     )
                 }
             } else {
-                // Back Face: North East Gamosa / Muga diamond motif
+                // Back Face: Traditional North East Gamusa / Muga silk heritage pattern
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(2.dp)
                         .background(
-                            Brush.radialGradient(
+                            Brush.linearGradient(
                                 colors = if (darkTheme) 
-                                    listOf(Color(0xFF0F4C3A), Color(0xFF0A2E23)) 
+                                    listOf(Color(0xFF0F382C), Color(0xFF092019)) 
                                 else 
-                                    listOf(Color(0xFFFBF8F1), Color(0xFFE8F5E9))
+                                    listOf(Color(0xFFFFF8F0), Color(0xFFFDEEE0))
                             ),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(10.dp)
                         )
                         .border(
-                            1.dp,
-                            if (card.isHighlighted) Color(0xFFF59E0B) else if (darkTheme) Color(0x40D4AF37) else Color(0x60D90429),
-                            shape = RoundedCornerShape(12.dp)
+                            1.5.dp,
+                            if (card.isHighlighted) Color(0xFFF59E0B) else if (darkTheme) Color(0x66D4AF37) else Color(0x55D90429),
+                            shape = RoundedCornerShape(10.dp)
                         )
+                        .padding(3.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.FilterVintage,
-                        contentDescription = "North East Motif",
-                        tint = if (card.isHighlighted) Color(0xFFD97706) else if (darkTheme) Color(0xFFD4AF37) else Color(0xFFD90429),
-                        modifier = Modifier.size(if (gridColumns == 4) 20.dp else 26.dp)
-                    )
+                    // Inner accent border for playing card feel
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .border(
+                                0.75.dp,
+                                if (darkTheme) Color(0x33D4AF37) else Color(0x33D90429),
+                                shape = RoundedCornerShape(7.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FilterVintage,
+                                contentDescription = "North East Motif",
+                                tint = if (card.isHighlighted) Color(0xFFD97706) else if (darkTheme) Color(0xFFE5B84B) else Color(0xFFD90429),
+                                modifier = Modifier.size(if (gridColumns >= 4) 22.dp else 28.dp)
+                            )
+                            if (gridColumns <= 3) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "✦",
+                                    fontSize = 8.sp,
+                                    color = if (darkTheme) Color(0x99E5B84B) else Color(0x99D90429)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
