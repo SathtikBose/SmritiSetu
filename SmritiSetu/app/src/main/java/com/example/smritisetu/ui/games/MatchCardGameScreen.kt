@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.border
@@ -50,7 +51,7 @@ import kotlinx.coroutines.launch
 
 data class NorthEastCardData(
     val icon: ImageVector,
-    val label: String,
+    val getLabel: (com.example.smritisetu.data.AppStrings) -> String,
     val imageResId: Int,
     val region: String = ""
 )
@@ -59,31 +60,33 @@ data class CardItem(
     val id: Int,
     val pairId: Int,
     val icon: ImageVector,
-    val label: String,
+    val getLabel: (com.example.smritisetu.data.AppStrings) -> String,
     val imageResId: Int,
     val region: String = "",
     var isFlipped: Boolean = false,
     var isMatched: Boolean = false,
     var isHighlighted: Boolean = false
-)
+) {
+    fun localizedLabel(strings: com.example.smritisetu.data.AppStrings): String = getLabel(strings)
+}
 
 private val culturalSymbols = listOf(
-    NorthEastCardData(Icons.Default.EmojiNature, "Kaziranga Rhino", com.example.smritisetu.R.drawable.card_rhino, "Assam"),
-    NorthEastCardData(Icons.Default.CrueltyFree, "Red Panda", com.example.smritisetu.R.drawable.card_red_panda, "Sikkim"),
-    NorthEastCardData(Icons.Default.Flight, "Hornbill Bird", com.example.smritisetu.R.drawable.card_hornbill, "Nagaland"),
-    NorthEastCardData(Icons.Default.Park, "Root Bridge", com.example.smritisetu.R.drawable.card_root_bridge, "Meghalaya"),
-    NorthEastCardData(Icons.Default.Spa, "Assam Tea", com.example.smritisetu.R.drawable.card_tea_leaf, "Assam"),
-    NorthEastCardData(Icons.Default.Audiotrack, "Bihu Dhol", com.example.smritisetu.R.drawable.card_bihu_dhol, "Assam"),
-    NorthEastCardData(Icons.Default.LocalFlorist, "Kopou Orchid", com.example.smritisetu.R.drawable.card_kopou_orchid, "North East"),
-    NorthEastCardData(Icons.Default.Pets, "Sangai Deer", com.example.smritisetu.R.drawable.card_sangai_deer, "Manipur"),
-    NorthEastCardData(Icons.Default.AccountBalance, "Tawang Monastery", com.example.smritisetu.R.drawable.card_tawang, "Arunachal"),
-    NorthEastCardData(Icons.Default.Yard, "Cheraw Bamboo", com.example.smritisetu.R.drawable.card_cheraw, "Mizoram"),
-    NorthEastCardData(Icons.Default.Palette, "Gamusa Weave", com.example.smritisetu.R.drawable.card_gamusa, "Assam"),
-    NorthEastCardData(Icons.Default.Sailing, "Majuli Island", com.example.smritisetu.R.drawable.card_majuli, "Brahmaputra"),
-    NorthEastCardData(Icons.Default.Landscape, "Kangchenjunga", com.example.smritisetu.R.drawable.card_kangchenjunga, "Sikkim"),
-    NorthEastCardData(Icons.Default.Water, "River Dolphin", com.example.smritisetu.R.drawable.card_dolphin, "Assam"),
-    NorthEastCardData(Icons.Default.Visibility, "Clouded Leopard", com.example.smritisetu.R.drawable.card_leopard, "Meghalaya"),
-    NorthEastCardData(Icons.Default.Waves, "Loktak Lake", com.example.smritisetu.R.drawable.card_loktak, "Manipur")
+    NorthEastCardData(Icons.Default.EmojiNature, { it.cardRhino }, com.example.smritisetu.R.drawable.card_rhino, "Assam"),
+    NorthEastCardData(Icons.Default.CrueltyFree, { it.cardRedPanda }, com.example.smritisetu.R.drawable.card_red_panda, "Sikkim"),
+    NorthEastCardData(Icons.Default.Flight, { it.cardHornbill }, com.example.smritisetu.R.drawable.card_hornbill, "Nagaland"),
+    NorthEastCardData(Icons.Default.Park, { it.cardRootBridge }, com.example.smritisetu.R.drawable.card_root_bridge, "Meghalaya"),
+    NorthEastCardData(Icons.Default.Spa, { it.cardTeaLeaf }, com.example.smritisetu.R.drawable.card_tea_leaf, "Assam"),
+    NorthEastCardData(Icons.Default.Audiotrack, { it.cardBihuDhol }, com.example.smritisetu.R.drawable.card_bihu_dhol, "Assam"),
+    NorthEastCardData(Icons.Default.LocalFlorist, { it.cardKopouOrchid }, com.example.smritisetu.R.drawable.card_kopou_orchid, "North East"),
+    NorthEastCardData(Icons.Default.Pets, { it.cardSangaiDeer }, com.example.smritisetu.R.drawable.card_sangai_deer, "Manipur"),
+    NorthEastCardData(Icons.Default.AccountBalance, { it.cardTawang }, com.example.smritisetu.R.drawable.card_tawang, "Arunachal"),
+    NorthEastCardData(Icons.Default.Yard, { it.cardCheraw }, com.example.smritisetu.R.drawable.card_cheraw, "Mizoram"),
+    NorthEastCardData(Icons.Default.Palette, { it.cardGamusa }, com.example.smritisetu.R.drawable.card_gamusa, "Assam"),
+    NorthEastCardData(Icons.Default.Sailing, { it.cardMajuli }, com.example.smritisetu.R.drawable.card_majuli, "Brahmaputra"),
+    NorthEastCardData(Icons.Default.Landscape, { it.cardKangchenjunga }, com.example.smritisetu.R.drawable.card_kangchenjunga, "Sikkim"),
+    NorthEastCardData(Icons.Default.Water, { it.cardDolphin }, com.example.smritisetu.R.drawable.card_dolphin, "Assam"),
+    NorthEastCardData(Icons.Default.Visibility, { it.cardLeopard }, com.example.smritisetu.R.drawable.card_leopard, "Meghalaya"),
+    NorthEastCardData(Icons.Default.Waves, { it.cardLoktak }, com.example.smritisetu.R.drawable.card_loktak, "Manipur")
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -190,8 +193,8 @@ fun MatchCardGameScreen(
         val cardList = mutableListOf<CardItem>()
         var cardId = 0
         selectedSymbols.forEachIndexed { pairIndex, item ->
-            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = item.icon, label = item.label, imageResId = item.imageResId, region = item.region, isFlipped = true))
-            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = item.icon, label = item.label, imageResId = item.imageResId, region = item.region, isFlipped = true))
+            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = item.icon, getLabel = item.getLabel, imageResId = item.imageResId, region = item.region, isFlipped = true))
+            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = item.icon, getLabel = item.getLabel, imageResId = item.imageResId, region = item.region, isFlipped = true))
         }
         cardList.shuffle()
         mutableStateOf(cardList.toList())
@@ -232,8 +235,8 @@ fun MatchCardGameScreen(
         val cardList = mutableListOf<CardItem>()
         var cardId = 0
         selectedSymbols.forEachIndexed { pairIndex, item ->
-            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = item.icon, label = item.label, imageResId = item.imageResId, region = item.region, isFlipped = true))
-            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = item.icon, label = item.label, imageResId = item.imageResId, region = item.region, isFlipped = true))
+            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = item.icon, getLabel = item.getLabel, imageResId = item.imageResId, region = item.region, isFlipped = true))
+            cardList.add(CardItem(id = cardId++, pairId = pairIndex, icon = item.icon, getLabel = item.getLabel, imageResId = item.imageResId, region = item.region, isFlipped = true))
         }
         cardList.shuffle()
         cards = cardList.toList()
@@ -1006,7 +1009,7 @@ fun MatchCardGameScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Memorize All Cards: ${previewRemainingSeconds}s",
+                                text = "${strings.memorizeAllCards}: ${previewRemainingSeconds}s",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
@@ -1031,7 +1034,7 @@ fun MatchCardGameScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Peek Active: ${peekRemainingSeconds}s",
+                                text = "${strings.peekActive}: ${peekRemainingSeconds}s",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                                 color = if (darkTheme) Color(0xFF90E0EF) else Color(0xFF0077B6)
                             )
@@ -1073,6 +1076,7 @@ fun MatchCardGameScreen(
                     items(cards, key = { it.id }) { card ->
                         FlippableCardTile(
                             card = card,
+                            strings = strings,
                             isProcessingMatch = isProcessingMatch,
                             isPeekActive = isPeekActive,
                             hintPulseScale = hintPulseScale,
@@ -1090,6 +1094,7 @@ fun MatchCardGameScreen(
 @Composable
 fun FlippableCardTile(
     card: CardItem,
+    strings: com.example.smritisetu.data.AppStrings,
     isProcessingMatch: Boolean,
     isPeekActive: Boolean = false,
     hintPulseScale: Float,
@@ -1155,7 +1160,7 @@ fun FlippableCardTile(
                 ) {
                     Image(
                         painter = painterResource(id = card.imageResId),
-                        contentDescription = card.label,
+                        contentDescription = card.localizedLabel(strings),
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .weight(1f)
@@ -1169,12 +1174,13 @@ fun FlippableCardTile(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = card.label,
+                        text = card.localizedLabel(strings),
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                         color = if (card.isMatched) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                         textAlign = TextAlign.Center,
-                        fontSize = if (gridColumns == 4) 8.sp else 9.5.sp,
-                        maxLines = 1
+                        fontSize = if (gridColumns == 4) 7.5.sp else 9.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             } else {
